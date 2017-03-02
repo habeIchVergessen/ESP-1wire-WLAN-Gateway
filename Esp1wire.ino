@@ -6,6 +6,13 @@ Esp1wire::Esp1wire() {
 #ifdef _DEBUG_TEST_DATA
 void Esp1wire::testData() {
 // test crap
+
+  uint8_t data[2] = { 0xFF, 0x5E };
+  int16_t fpTemperature =
+    (((int16_t) data[0]) << 11) |
+    (((int16_t) data[1]) << 3);
+  float temperature = (float)fpTemperature * 0.0078125;
+  Serial.println("temperature = " + String(temperature));
 }
 #endif
 
