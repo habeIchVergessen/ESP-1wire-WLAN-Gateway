@@ -12,7 +12,6 @@
 | | targetSearch | enable FAMILY CODE filter (just implemented for DeviceTypeSwitch yet) |
 
 ###DeviceType###
-| --- | --- |
 | DeviceTypeUnsupported | all not implemeted devices |
 | DeviceTypeTemperature | several temperature devices (DS1822, DS1825, DS18S20, DS18B20) |
 | DeviceTypeSwitch | DS2406/7 (family code 0x12) |
