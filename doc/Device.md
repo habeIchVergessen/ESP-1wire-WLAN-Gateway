@@ -7,8 +7,8 @@
 | DeviceType | **getDeviceType()** | device type |
 | String | **getOneWireDeviceID()** | user friendly device id | 
 | uint8_t | **getOneWireDeviceType()** | device id |
-| bool | **getIgnoreAlarmSearch()** | device setting for alarm search excluded |
-| void | **setIgnoreAlarmSearch(bool ignore)** | modify device setting for alarm search excluded |
+| bool | **getIgnoreAlarmSearch()** | alarm search suppress setting |
+| void | **setIgnoreAlarmSearch(bool ignore)** | modify alarm search suppress setting |
 
 ###protected###
 | | member |
