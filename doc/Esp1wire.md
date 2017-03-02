@@ -11,3 +11,13 @@
 | **bool resetSearch()** | start scanning each detected 1-wire bus |
 | **[AlarmFilter](./AlarmFilter.md) alarmSearch(DeviceType targetSearch)** | perform a conditional search on each detected 1-wire bus |
 | targetSearch | enable FAMILY CODE filter (only implemented for DeviceTypeSwitch yet) |
+
+| constants | |
+| --- | --- |
+| **enum DeviceType** | |
+| DeviceTypeUnsupported | all not implemeted devices |
+| DeviceTypeTemperature | several temperature devices (DS1822, DS1825, DS18S20, DS18B20) |
+| DeviceTypeSwitch | DS2406/7 (family code 0x12) |
+| DeviceTypeCounter | DS2423 (family code 0x08) |
+| DeviceTypeBattery | DS2438 (family code 0x26) |
+| DeviceTypeAll | all supported devices |
