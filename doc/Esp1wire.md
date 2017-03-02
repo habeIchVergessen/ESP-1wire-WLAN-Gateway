@@ -24,9 +24,9 @@
 | DeviceTypeBattery | DS2438 (family code 0x26) |
 | DeviceTypeAll | all supported devices |
 
-[class Device](./doc/Device.md)
+[class Device](./Device.md)
 
-[class TemperatureDevice](./doc/TemperatureDevice.md)
+[class TemperatureDevice](./TemperatureDevice.md)
 
 [class SwitchDevice](./SwitchDevice.md)
 
@@ -35,20 +35,20 @@
 [class BatteryDevice](./BatteryDevice.md)
 
 ###protected###
-[class BusMaster](./doc/BusMaster.md)
+[class BusMaster](./BusMaster.md)
 
-[class Bus](./doc/Bus.md)
+[class Bus](./Bus.md)
 
-[class BusIC](./doc/BusIC.md) : Bus
+[class BusIC](./BusIC.md) : Bus
 
-[class BusGPIO](./doc/BusGPIO.md) : Bus
+[class BusGPIO](./BusGPIO.md) : Bus
 
-[class HelperDevice](./doc/HelperBatteryDevice.md) : [Device](./doc/Device.md)
+[class HelperDevice](./HelperBatteryDevice.md) : [Device](./Device.md)
 
-[class HelperTemperatureDevice](./doc/HelperTemperatureDevice.md) : [TemperatureDevice](./doc/TemperatureDevice.md)
+[class HelperTemperatureDevice](./HelperTemperatureDevice.md) : [TemperatureDevice](./TemperatureDevice.md)
 
-[class HelperSwitchDevice](./doc/HelperSwitchDevice.md) : [SwitchDevice](./SwitchDevice.md)
+[class HelperSwitchDevice](./HelperSwitchDevice.md) : [SwitchDevice](./SwitchDevice.md)
 
-[class HelperCounterDevice](./doc/HelperCounterDevice.md) : [CounterDevice](./CounterDevice.md)
+[class HelperCounterDevice](./HelperCounterDevice.md) : [CounterDevice](./CounterDevice.md)
 
-[class HelperBatteryDevice](./doc/HelperBatteryDevice.md) : [BatteryDevice](./BatteryDevice.md)
+[class HelperBatteryDevice](./HelperBatteryDevice.md) : [BatteryDevice](./BatteryDevice.md)
