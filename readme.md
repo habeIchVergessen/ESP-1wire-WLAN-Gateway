@@ -1,5 +1,5 @@
 # Esp1wire
-** OneWire library for ESP8266 **
+**OneWire library for ESP8266**
 
 | class | description |
 | --- | --- |
