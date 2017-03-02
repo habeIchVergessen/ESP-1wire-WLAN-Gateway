@@ -1,8 +1,8 @@
 **class [Esp1wire](./Esp1wire.md)::Device**
 
 ###public###
-| method | description |
-| --- | --- |
+| | method | description |
+| --- | --- | --- |
 | String | **getName()** | user friendly device type |
 | DeviceType | **getDeviceType()** | device type |
 | String | **getOneWireDeviceID()** | user friendly device id | 
