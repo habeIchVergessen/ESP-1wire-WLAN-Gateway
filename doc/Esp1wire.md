@@ -25,19 +25,30 @@
 | DeviceTypeAll | all supported devices |
 
 [class Device](./doc/Device.md)
+
 [class TemperatureDevice](./doc/TemperatureDevice.md)
+
 [class SwitchDevice](./SwitchDevice.md)
+
 [class CounterDevice](./CounterDevice.md)
+
 [class BatteryDevice](./BatteryDevice.md)
 
 ###protected###
 [class BusMaster](./doc/BusMaster.md)
+
 [class Bus](./doc/Bus.md)
+
 [class BusIC](./doc/BusIC.md) : Bus
+
 [class BusGPIO](./doc/BusGPIO.md) : Bus
 
 [class HelperDevice](./doc/HelperBatteryDevice.md) : [Device](./doc/Device.md)
+
 [class HelperTemperatureDevice](./doc/HelperTemperatureDevice.md) : [TemperatureDevice](./doc/TemperatureDevice.md)
+
 [class HelperSwitchDevice](./doc/HelperSwitchDevice.md) : [SwitchDevice](./SwitchDevice.md)
+
 [class HelperCounterDevice](./doc/HelperCounterDevice.md) : [CounterDevice](./CounterDevice.md)
+
 [class HelperBatteryDevice](./doc/HelperBatteryDevice.md) : [BatteryDevice](./BatteryDevice.md)
