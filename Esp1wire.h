@@ -66,8 +66,7 @@ class Esp1wire {
     bool          probeGPIO(uint8_t gpio = 0);
 
     uint8_t                 getBusCount() { return mBusListCount; };
-    DeviceFilter            getDeviceFilter() { return DeviceFilter(firstBus, DeviceTypeAll); };
-    DeviceFilter            getDeviceFilter(DeviceType filter) { return DeviceFilter(firstBus, filter); };
+    DeviceFilter            getDeviceFilter(DeviceType filter=DeviceTypeAll) { return DeviceFilter(firstBus, filter); };
     TemperatureDeviceFilter getTemperatureDeviceFilter() { return TemperatureDeviceFilter(firstBus); }
 
 #ifdef _DEBUG_TEST_DATA
