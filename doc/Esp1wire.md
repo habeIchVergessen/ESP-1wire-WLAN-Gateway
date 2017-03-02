@@ -1,5 +1,4 @@
-# class Esp1wire
-**public**
+**class Esp1wire**
 
 || method | description |
 | --- | --- | --- |
@@ -10,7 +9,7 @@
 | | gpio | gpio pin (default 0) |
 | bool | **resetSearch()** | start scanning each detected 1-wire bus |
 | [AlarmFilter](./AlarmFilter.md) | **alarmSearch(DeviceType targetSearch)** | perform a conditional search on each detected 1-wire bus |
-| | targetSearch | enable FAMILY CODE filter (only implemented for DeviceTypeSwitch yet) |
+| | targetSearch | enable FAMILY CODE filter (just implemented for DeviceTypeSwitch yet) |
 
 | **DeviceType** | |
 | --- | --- |

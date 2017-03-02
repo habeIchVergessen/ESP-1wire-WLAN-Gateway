@@ -1,4 +1,4 @@
-**class [Esp1wire](./Esp1wire.md)::AlarmFilter : [DeviceFilter](./DeviceFilter.md)**
+**class [Esp1wire](./Esp1wire.md)::DeviceFilter**
 
 | method | description |
 | --- | --- |
