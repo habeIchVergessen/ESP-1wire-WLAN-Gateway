@@ -1,4 +1,4 @@
-**class Esp1wire**
+##class Esp1wire##
 
 || method | description |
 | --- | --- | --- |
@@ -11,7 +11,8 @@
 | [AlarmFilter](./AlarmFilter.md) | **alarmSearch([DeviceType](#devicetype) targetSearch)** | perform a conditional search on each detected 1-wire bus |
 | | targetSearch | enable FAMILY CODE filter (just implemented for DeviceTypeSwitch yet) |
 
-| ###DeviceType | |
+###DeviceType
+| name | description |
 | --- | --- |
 | DeviceTypeUnsupported | all not implemeted devices |
 | DeviceTypeTemperature | several temperature devices (DS1822, DS1825, DS18S20, DS18B20) |
