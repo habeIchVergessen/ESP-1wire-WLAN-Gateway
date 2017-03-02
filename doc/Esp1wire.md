@@ -35,7 +35,7 @@
 [class BatteryDevice](./BatteryDevice.md)
 
 ###protected###
-[class BusMaster](./BusMaster.md)
+[class Busmaster](./Busmaster.md)
 
 [class Bus](./Bus.md)
 
