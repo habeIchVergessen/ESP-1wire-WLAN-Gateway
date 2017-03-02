@@ -3,7 +3,7 @@
 
 | method | description |
 | --- | --- |
-| **bool probeI2C(uint8_t sda, uint8_t scl)** | scan i2c bus for DS2482-100/800 bus master chips |
+| bool | **probeI2C(uint8_t sda, uint8_t scl)** | scan i2c bus for DS2482-100/800 bus master chips |
 | sda | gpio pin for SDA (default SDA) |
 | scl | gpio pin for SCL (default SCL) |
 | **bool probeGPIO(uint8_t gpio)** | probe gpio for 1-wire devices |
@@ -12,9 +12,8 @@
 | **[AlarmFilter](./AlarmFilter.md) alarmSearch(DeviceType targetSearch)** | perform a conditional search on each detected 1-wire bus |
 | targetSearch | enable FAMILY CODE filter (only implemented for DeviceTypeSwitch yet) |
 
-| constants | |
+| **DeviceType** | |
 | --- | --- |
-| **enum DeviceType** | |
 | DeviceTypeUnsupported | all not implemeted devices |
 | DeviceTypeTemperature | several temperature devices (DS1822, DS1825, DS18S20, DS18B20) |
 | DeviceTypeSwitch | DS2406/7 (family code 0x12) |
