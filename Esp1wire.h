@@ -467,7 +467,7 @@ class Esp1wire {
       , spp1fLSBO             = (byte)5
       , spp1fMSBO             = (byte)6
       };
-};
+    };
     
     // class DeviceFilter
     class DeviceFilter {
