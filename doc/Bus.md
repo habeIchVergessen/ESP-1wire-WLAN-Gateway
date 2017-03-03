@@ -8,7 +8,7 @@
 | bool | **parasite()** | any device in parasite mode present |
 | bool | **powerSupply()** | current parasite state |
 | uint16_t | **getDeviceCount()** | count of detected devices |
-| uint16_t | ***getTemperatureDeviceCount()** | count of detected temperature devices |
+| uint16_t | **getTemperatureDeviceCount()** | count of detected temperature devices |
 | void | **resetIgnoreAlarmFlags(DeviceType deviceType)** | clear all ignoreAlarmFlags |
 | | deviceType | default DeviceTypeAll |
 | uint8_t | **crc8(uint8_t *address, uint8_t len)** | calculate crc8 |
@@ -58,3 +58,9 @@
 | uint16_t | mDeviceListCount |
 | uint16_t | mTemperatureDeviceCount |
 | uint8_t | mStatus |
+
+###inheritance###
+[class BusIC](./BusIC.md)
+
+[class BusGPIO](./BusGPIO.md)
+
