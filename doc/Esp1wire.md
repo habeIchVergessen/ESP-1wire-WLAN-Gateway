@@ -12,7 +12,7 @@
 | | targetSearch | enable FAMILY CODE filter (just implemented for DeviceTypeSwitch yet) |
 | [DeviceFilter](./DeviceFiler.md) | **getDeviceFilter(DeviceType filter)** | device list iterator |
 | | filter | default DeviceTypeAll |
-| [TemperatureDeviceFilter](./TemperatureDeviceFiler.md) | **getTemperatureDeviceFilter()** | temperature device list iterator |
+| [TemperatureDeviceFilter](./TemperatureDeviceFilter.md) | **getTemperatureDeviceFilter()** | temperature device list iterator |
 | uint8_t | **getBusCount()** | amount of detected 1-wire busses |
 
 | **DeviceType** | |
