@@ -6,7 +6,7 @@
 | bool | **getChannelInfo(SwitchChannelStatus *channelStatus)** | read channel status |
 | bool | **getMemoryStatus(SwitchMemoryStatus *memoryStatus)** | read memory status |
 | bool | **setConditionalSearch(ConditionalSearchPolarity csPolarity, ConditionalSearchSourceSelect csSourceSelect, ConditionalSearchChannelSelect csChannelSelect, ChannelFlipFlop channelFlipFlop)** | configure conditional search |
-| bool | **resetAlarm(SwitchChannelStatus *channelStatus)** | |
+| bool | **resetAlarm(SwitchChannelStatus *channelStatus)** | read current status and reset alarm afterwards |
 
 ###SwitchChannelStatus###
 | | name | description |
