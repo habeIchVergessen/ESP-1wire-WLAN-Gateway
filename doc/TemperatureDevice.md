@@ -10,6 +10,14 @@
 | bool | **powerSupply()** | device use parasite mode |
 | TemperatureResolution | **readResolution()** | read current temperature resolution |
 
+###TemperatureResolution###
+| name | description |
+| resolutionUnknown | detection of resolution failed | 
+| resolution9bit | |
+| resolution10bit | |
+| resolution11bit | |
+| resolution12bit | |
+
 ###protected###
 | | method | description |
 | --- | --- | --- |
