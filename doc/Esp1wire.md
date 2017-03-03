@@ -45,10 +45,11 @@
 
 [class HelperDevice](./HelperDevice.md) : [Device](./Device.md)
 
-[class HelperTemperatureDevice](./HelperTemperatureDevice.md) : [TemperatureDevice](./TemperatureDevice.md)
-
-[class HelperSwitchDevice](./HelperSwitchDevice.md) : [SwitchDevice](./SwitchDevice.md)
+[class HelperBatteryDevice](./HelperBatteryDevice.md) : [BatteryDevice](./BatteryDevice.md)
 
 [class HelperCounterDevice](./HelperCounterDevice.md) : [CounterDevice](./CounterDevice.md)
 
-[class HelperBatteryDevice](./HelperBatteryDevice.md) : [BatteryDevice](./BatteryDevice.md)
+[class HelperSwitchDevice](./HelperSwitchDevice.md) : [SwitchDevice](./SwitchDevice.md)
+
+[class HelperTemperatureDevice](./HelperTemperatureDevice.md) : [TemperatureDevice](./TemperatureDevice.md)
+
