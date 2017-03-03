@@ -4,8 +4,8 @@
 
 | | method | description |
 | --- | --- | --- |
-| DeviceList | **\*getFirstDevice()** | first element in device list |
-| String | **getBusInformation()** | user friendly bus information |
+| String | **getName()** | user friendly information |
+| BusmasterType | **getType()** | user friendly information |
 | bool | **resetSearch()** | perform a normal search on 1-wire bus |
 | bool | **alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSearch)** | perform a conditional search on 1-wire bus |
 | bool | **wireReset()** | send reset to 1-wire bus |
@@ -22,5 +22,5 @@
 | | address | search result |
 | | alarm | normal/conditonal search |
 | | targetSearch | filter family code |
-| void | wireStrongPullup(bool pullup) | DS2482 enable/disable parasite mode |
+| void | **wireStrongPullup(bool pullup)** | DS2482 enable/disable parasite mode |
 | | pullup | on or off |

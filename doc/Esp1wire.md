@@ -24,6 +24,11 @@
 | DeviceTypeBattery | DS2438 (family code 0x26) |
 | DeviceTypeAll | all supported devices |
 
+| **BusmasterType** | |
+| --- | --- |
+| DS2482_100 | DS2482-100 |
+| DS2482_800 | DS2482-800 |
+
 [class Device](./Device.md)
 
 [class BatteryDevice](./BatteryDevice.md) : Device
