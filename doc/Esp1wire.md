@@ -23,7 +23,7 @@
 | DeviceTypeSwitch | DS2406/7 (family code 0x12) |
 | DeviceTypeCounter | DS2423 (family code 0x08) |
 | DeviceTypeBattery | DS2438 (family code 0x26) |
-| DeviceTypeAll | all supported devices |
+| DeviceTypeAll | all devices |
 
 ###BusmasterType###
 | name | description |
