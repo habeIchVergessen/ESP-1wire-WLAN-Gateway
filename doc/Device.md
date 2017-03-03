@@ -4,7 +4,7 @@
 | | method | description |
 | --- | --- | --- |
 | String | **getName()** | user friendly device type |
-| DeviceType | **getDeviceType()** | device type |
+| [DeviceType](./Esp1wire.ms#devicetype) | **getDeviceType()** | device type |
 | String | **getOneWireDeviceID()** | user friendly device id | 
 | uint8_t | **getOneWireDeviceType()** | device id |
 | bool | **getIgnoreAlarmSearch()** | alarm search suppress setting |

@@ -15,7 +15,8 @@
 | [TemperatureDeviceFilter](./TemperatureDeviceFilter.md) | **getTemperatureDeviceFilter()** | temperature device list iterator |
 | uint8_t | **getBusCount()** | amount of detected 1-wire busses |
 
-| **DeviceType** | |
+###DeviceType###
+| name | description |
 | --- | --- |
 | DeviceTypeUnsupported | all not implemeted devices |
 | DeviceTypeTemperature | several temperature devices (DS1822, DS1825, DS18S20, DS18B20) |
@@ -24,7 +25,8 @@
 | DeviceTypeBattery | DS2438 (family code 0x26) |
 | DeviceTypeAll | all supported devices |
 
-| **BusmasterType** | |
+###BusmasterType###
+| name | description |
 | --- | --- |
 | DS2482_100 | DS2482-100 |
 | DS2482_800 | DS2482-800 |
