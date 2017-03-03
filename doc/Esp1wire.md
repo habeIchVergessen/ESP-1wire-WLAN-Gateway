@@ -26,13 +26,13 @@
 
 [class Device](./Device.md)
 
-[class TemperatureDevice](./TemperatureDevice.md)
+[class BatteryDevice](./BatteryDevice.md) : Device
 
-[class SwitchDevice](./SwitchDevice.md)
+[class CounterDevice](./CounterDevice.md) : Device
 
-[class CounterDevice](./CounterDevice.md)
+[class SwitchDevice](./SwitchDevice.md) : Device
 
-[class BatteryDevice](./BatteryDevice.md)
+[class TemperatureDevice](./TemperatureDevice.md) : Device
 
 ###protected###
 [class Busmaster](./Busmaster.md)

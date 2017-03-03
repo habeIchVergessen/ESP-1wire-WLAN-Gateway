@@ -27,4 +27,4 @@
 
 [class TemperatureDevice](./TemperatureDevice.md)
 
-[class HelperDevice](./HelperDevice.md) : [Device](./Device.md)
+[class HelperDevice](./HelperDevice.md)
