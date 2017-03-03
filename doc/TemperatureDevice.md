@@ -12,6 +12,7 @@
 
 ###TemperatureResolution###
 | name | description |
+| --- | --- |
 | resolutionUnknown | detection of resolution failed | 
 | resolution9bit | |
 | resolution10bit | |
