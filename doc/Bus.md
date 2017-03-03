@@ -1,6 +1,7 @@
 **class [Esp1wire](./Esp1wire.md)::Bus**
 
 ***public***
+
 | | method | description |
 | --- | --- | --- |
 | void | **registerTemperatureDevice(bool parasite, uint8_t resolution)** | |
@@ -20,6 +21,7 @@
 | void | **wireWriteBytes(uint8_t *bytes, uint8_t len)** | write data to 1-wire bus |
         
 ***virtual public***
+
 | | method | description |
 | --- | --- | --- |
 | DeviceList\* | **getFirstDevice()** | first element in device list |
@@ -40,6 +42,7 @@
 | | power | on or off |
 
 ***protected***
+
 | | method | description |
 | --- | --- | --- |
 | void | **deviceDetected(uint8_t *address)** | process address found by resetSearch |

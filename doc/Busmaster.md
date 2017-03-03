@@ -5,7 +5,7 @@
 | | method | description |
 | --- | --- | --- |
 | String | **getName()** | user friendly information |
-| BusmasterType | **getType()** | user friendly information |
+| BusmasterType | **getType()** | bus master type DS2482-100/-800 |
 | bool | **resetSearch()** | perform a normal search on 1-wire bus |
 | bool | **alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSearch)** | perform a conditional search on 1-wire bus |
 | bool | **wireReset()** | send reset to 1-wire bus |

@@ -1,6 +1,7 @@
 **class [Esp1wire](./Esp1wire.md)::BusIC** : [Bus](./Bus.md)
 
 ***public (implement virtual from bus)***
+
 | | method | description |
 | --- | --- | --- |
 | DeviceList\* | **getFirstDevice()** | first element in device list |
