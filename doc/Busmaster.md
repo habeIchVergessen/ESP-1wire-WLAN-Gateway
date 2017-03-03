@@ -3,5 +3,5 @@
 ***public***
 | | method | description |
 | --- | --- | --- |
-| DeviceList | **\*getFirstDevice()** | first element in device list |
-| String | **getBusInformation()** | user friendly bus information |
+| void | wireStrongPullup(bool pullup) | DS2482 enable/disable parasite mode |
+| | pullup | on or off |
