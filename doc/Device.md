@@ -17,3 +17,14 @@
 | uint8_t | mStatus = 0 |
 | Bus | *mBus |
 | DeviceType | mDeviceType |
+
+###inheritance###
+[class BatteryDevice](./BatteryDevice.md)
+
+[class CounterDevice](./CounterDevice.md)
+
+[class SwitchDevice](./SwitchDevice.md)
+
+[class TemperatureDevice](./TemperatureDevice.md)
+
+[class HelperDevice](./HelperDevice.md) : [Device](./Device.md)

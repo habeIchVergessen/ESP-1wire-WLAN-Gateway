@@ -43,7 +43,7 @@
 
 [class BusGPIO](./BusGPIO.md) : Bus
 
-[class HelperDevice](./HelperBatteryDevice.md) : [Device](./Device.md)
+[class HelperDevice](./HelperDevice.md) : [Device](./Device.md)
 
 [class HelperTemperatureDevice](./HelperTemperatureDevice.md) : [TemperatureDevice](./TemperatureDevice.md)
 
