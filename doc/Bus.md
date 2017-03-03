@@ -35,10 +35,10 @@
 | void | **wireWriteByte(uint8_t b)** | OneWire\|DS2482 wireWriteByte |
 | | b byte to write |
 | uint8_t | **wireReadBit()** | OneWire\|DS2482 wireReadBit |
-| void | **wireReadBytes(uint8_t *data, uint16_t len) | OneWire\|DS2482 wireReadBytes |
+| void | **wireReadBytes(uint8_t *data, uint16_t len)** | OneWire\|DS2482 wireReadBytes |
 | | data | receive buffer |
 | | len | amount of bytes to receive |
-| void | **setPowerSupply(bool power) | OneWire\|DS2482 enable/disable parasite mode |
+| void | **setPowerSupply(bool power)** | OneWire\|DS2482 enable/disable parasite mode |
 | | power | on or off |
 
 ***protected***
