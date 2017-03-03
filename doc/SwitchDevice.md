@@ -3,10 +3,10 @@
 ###public###
 | | method | description |
 | --- | --- | --- |
-| bool | **getChannelInfo(SwitchChannelStatus *channelStatus)** | read channel status |
-| bool | **getMemoryStatus(SwitchMemoryStatus *memoryStatus)** | read memory status |
+| bool | **getChannelInfo([SwitchChannelStatus](#switchchannelstatus) *channelStatus)** | read channel status |
+| bool | **getMemoryStatus([SwitchMemoryStatus](#switchmemorystatus) *memoryStatus)** | read memory status |
 | bool | **setConditionalSearch([ConditionalSearchPolarity](#conditionalsearchpolarity) csPolarity, [ConditionalSearchSourceSelect](#conditionalsearchsourceselect) csSourceSelect, [ConditionalSearchChannelSelect](#conditionalsearchchannelselect) csChannelSelect, [ChannelFlipFlop](#channelflipflop) channelFlipFlop)** | configure conditional search |
-| bool | **resetAlarm(SwitchChannelStatus *channelStatus)** | read current status and reset alarm afterwards |
+| bool | **resetAlarm([SwitchChannelStatus](#switchchannelstatus) *channelStatus)** | read current status and reset alarm afterwards |
 
 ###SwitchChannelStatus###
 | | name | description |
