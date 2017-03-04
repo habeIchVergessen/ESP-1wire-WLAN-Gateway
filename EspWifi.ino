@@ -374,12 +374,14 @@ boolean sendMultiCast(String msg) {
   if (WiFi.status() != WL_CONNECTED)
     return result;
 
+#ifndef _ESP_WIFI_UDP_MULTICAST_DISABLED
   if (WiFiUdp.beginPacketMulticast(ipMulti, portMulti, WiFi.localIP()) == 1) {
     WiFiUdp.write(msg.c_str());
     WiFiUdp.endPacket();
     yield();  // force ESP8266 background tasks (wifi); multicast requires approx. 600 µs vs. delay 1ms
     result = true;
   }
+#endif
 
   return result;
 }

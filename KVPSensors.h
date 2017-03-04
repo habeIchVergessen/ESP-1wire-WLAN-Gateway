@@ -37,27 +37,36 @@
 
 enum Sensors {
 // weather Readings
-	Temperature 		= (byte)  1
-,	Pressure			= (byte)  2
-,	Humidity			= (byte)  3
-,	WindSpeed			= (byte)  4
-,	WindDirection		= (byte)  5
-,	WindGust			= (byte)  6
-,	WindGustRef			= (byte)  7
-,	RainTipCount		= (byte)  8
-,	RainSecs			= (byte)  9
-,	Solar				= (byte) 10
-,	VoltageSolar		= (byte) 11
+	Temperature 		  = (byte)  1
+,	Pressure			    = (byte)  2
+,	Humidity			    = (byte)  3
+,	WindSpeed			    = (byte)  4
+,	WindDirection		  = (byte)  5
+,	WindGust			    = (byte)  6
+,	WindGustRef			  = (byte)  7
+,	RainTipCount		  = (byte)  8
+,	RainSecs			    = (byte)  9
+,	Solar				      = (byte) 10
+,	VoltageSolar		  = (byte) 11
 ,	VoltageCapacitor	= (byte) 12
-,	SoilLeaf			= (byte) 13
-,	UV					= (byte) 14
-,	SoilTemperature		= (byte) 15
-,	SoilMoisture		= (byte) 16
-,	LeafWetness			= (byte) 17
+,	SoilLeaf			    = (byte) 13
+,	UV					      = (byte) 14
+,	SoilTemperature	  = (byte) 15
+,	SoilMoisture		  = (byte) 16
+,	LeafWetness			  = (byte) 17
 // techn. Readings
-,	Channel				= (byte) 20
-,	Battery				= (byte) 21
-,	RSSI				= (byte) 22
+,	Channel				    = (byte) 20
+,	Battery				    = (byte) 21
+,	RSSI				      = (byte) 22
+// Esp1wire Readings
+, Device            = (byte) 30
+, Counter           = (byte) 31
+, Latch             = (byte) 32
+, Sense             = (byte) 33
+, FlipFlopQ         = (byte) 34
+, Voltage           = (byte) 35
+, Current           = (byte) 36
+, Capacity          = (byte) 37
 // diagnostic Readings
 ,	PacketDump			= (byte)255
 } ;

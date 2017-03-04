@@ -6,6 +6,8 @@
 
 #include "ESP8266WiFi.h"
 
+#include "EspConfig.h"
+
 #define PROGNAME "Esp1wire"
 #define PROGVERS "0.1"
 
@@ -28,8 +30,12 @@ bool httpRequestProcessed     = false;
 //#define _DEBUG
 //#define _DEBUG_SETUP
 #define _DEBUG_TIMING
+//#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
 //#define _DEBUG_TEST_DATA
+
+// EspWifi
+//#define _ESP_WIFI_UDP_MULTICAST_DISABLED
 
 #include "Esp1wire.h"
 
@@ -110,13 +116,13 @@ void loop() {
   }
   
   // read counter
-  if ((lastCounter + 10000) < millis()) {
+  if ((lastCounter + 120000) < millis()) {
     readCounter();
     lastCounter = millis();
   }
   
   // read temp
-  if ((lastTemp + 20000) < millis()) {
+  if ((lastTemp + 120000) < millis()) {
     readTemperatures();
     lastTemp = millis();
   }
@@ -136,19 +142,25 @@ void alarmSearch() {
   Esp1wire::AlarmFilter alarmFilter = esp1wire.alarmSearch(Esp1wire::DeviceTypeSwitch);
   while (alarmFilter.hasNext()) {
     Esp1wire::Device *device = alarmFilter.getNextDevice();
-    Serial.println("alarm: " + device->getOneWireDeviceID());
-
-    // suppress alarm
-//      if (device->getDeviceType() == Esp1wire::DeviceTypeTemperature)
-//        device->setIgnoreAlarmSearch(true);
 
     // switch
+    unsigned long tempStart;
+    tempStart = micros();
     Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch && ((Esp1wire::SwitchDevice*)device)->resetAlarm(&channelStatus)) {
-      Serial.print("latch,sense A: " + String(channelStatus.latchA) + "," + String(channelStatus.senseA));
-      if (channelStatus.noChannels == 2)
-        Serial.print(" B: " + String(channelStatus.latchB) + "," + String(channelStatus.senseB));
-      Serial.println();
+      String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
+
+      message += SensorDataValuePort(Latch, 'A', channelStatus.latchA);
+      message += SensorDataValuePort(Sense, 'A', channelStatus.senseA);
+      message += SensorDataValuePort(FlipFlopQ, 'A', channelStatus.flipFlopQA);
+      if (channelStatus.noChannels == 2) {
+        message += SensorDataValuePort(Latch, 'B', channelStatus.latchB);
+        message += SensorDataValuePort(Sense, 'B', channelStatus.senseB);
+        message += SensorDataValuePort(FlipFlopQ, 'B', channelStatus.flipFlopQB);
+      }
+      message += SensorDataValue(Device, device->getName());
+
+      sendMessage(message, tempStart);
     }
   }
 }
@@ -187,7 +199,8 @@ void readTemperatures() {
     unsigned long tempStart;
     tempStart = micros();
     if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC))
-      message += SensorDataValue(Temperature, tempC); // + " " + elapTime(tempStart));
+      message += SensorDataValue(Temperature, tempC);
+      message += SensorDataValue(Device, device->getName());
 //      // reset alarm (set same value for low and high; next calculation updates alarm flag)
 //      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
 //        Serial.print(" set alarm " + elapTime(tempStart));
@@ -231,34 +244,19 @@ String getDictionary() {
 
 #ifndef KVP_LONG_KEY_FORMAT
   result +=
-  DictionaryValue(Temperature);// +
-//  DictionaryValue(Pressure) +
-//  DictionaryValue(Humidity) +
-//  DictionaryValue(WindSpeed) +
-//  DictionaryValue(WindDirection) +
-//  DictionaryValue(WindGust) +
-//  DictionaryValue(WindGustRef) +
-//  DictionaryValue(RainTipCount) +
-//  DictionaryValue(RainSecs) +
-//  DictionaryValue(Solar) +
-//  DictionaryValue(VoltageSolar) +
-//  DictionaryValue(VoltageCapacitor) +
-//  DictionaryValue(SoilLeaf) +
-//  DictionaryValue(UV) +
-//  DictionaryValue(Channel) +
-//  DictionaryValue(Battery) +
-//  DictionaryValue(RSSI) +
-//  DictionaryValuePort(SoilTemperature, 1) + 
-//  DictionaryValuePort(SoilMoisture, 1) + 
-//  DictionaryValuePort(SoilTemperature, 2) + 
-//  DictionaryValuePort(SoilMoisture, 2) + 
-//  DictionaryValuePort(SoilTemperature, 3) + 
-//  DictionaryValuePort(SoilMoisture, 3) + 
-//  DictionaryValuePort(SoilTemperature, 4) + 
-//  DictionaryValuePort(SoilMoisture, 4) + 
-//  DictionaryValuePort(LeafWetness, 1) +
-//  DictionaryValuePort(LeafWetness, 2) +
-//  DictionaryValue(PacketDump);
+  DictionaryValue(Device) +
+  DictionaryValue(Temperature) +
+  DictionaryValuePort(Counter, 1) +
+  DictionaryValuePort(Counter, 2) +
+  DictionaryValuePort(Latch, 'A') +
+  DictionaryValuePort(Latch, 'B') +
+  DictionaryValuePort(Sense, 'A') +
+  DictionaryValuePort(Sense, 'B') +
+  DictionaryValuePort(FlipFlopQ, 'A') +
+  DictionaryValuePort(FlipFlopQ, 'B') +
+  DictionaryValue(Voltage) +
+  DictionaryValue(Current) +
+  DictionaryValue(Capacity);
 #endif
 
   return result;
@@ -370,8 +368,14 @@ void sendMessage(String message) {
 }
 
 void sendMessage(String message, unsigned long startTime) {
-  Serial.println(message + " " + elapTime(startTime));  
+  Serial.println(message + " " + elapTime(startTime));
+#ifdef _DEBUG_TIMING_UDP
+  unsigned long multiTime = micros();
+#endif
   sendMultiCast(message);
+#ifdef _DEBUG_TIMING_UDP
+  Serial.println("udp-multicast: " + elapTime(multiTime));
+#endif
 }
 
 // helper
