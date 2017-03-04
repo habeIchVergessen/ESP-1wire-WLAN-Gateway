@@ -2,7 +2,7 @@
 
 [documentation](./doc/Esp1wire.md)
 
-envirnonment
+environment
 Arduino IDE v1.6.5 r5
 
 required libraries

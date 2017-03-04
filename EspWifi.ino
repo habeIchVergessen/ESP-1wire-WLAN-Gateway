@@ -7,6 +7,10 @@
 #include "FS.h"
 #include "detail/RequestHandlersImpl.h"
 
+#ifdef _MQTT_SUPPORT
+  #include "EspConfig.h"
+#endif
+
 extern "C" {
 #include "user_interface.h"
 }
@@ -224,7 +228,26 @@ void httpHandleConfig() {
       server.send(303, "text/plain", "See Other");
       return;
     }
-      
+
+#ifdef _MQTT_SUPPORT
+Serial.println("mqtt: " + server.arg("mqtt"));
+    if (server.arg("mqtt") == "submit") {
+      if (server.arg("action") == "test") {
+        espConfig.setValue("mqttServer", server.arg("server"));
+        espConfig.setValue("mqttPort", server.arg("port"));
+        espConfig.setValue("mqttUser", server.arg("user"));
+        espConfig.setValue("mqttPassword", server.arg("password"));
+//        configEspMqtt();
+      } else if (server.arg("action") == "setup") {
+        espConfig.saveToFile();
+      }
+      server.client().setNoDelay(true);
+      server.sendHeader("Location", "/");
+      server.send(303, "text/plain", "See Other");
+      return;
+    }
+#endif
+
     for (uint8_t i=1; i<server.args(); i++) {
       int value, value2;
       bool hasValue = false, hasValue2 = false;

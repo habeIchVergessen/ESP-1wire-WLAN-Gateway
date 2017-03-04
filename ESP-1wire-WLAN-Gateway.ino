@@ -6,29 +6,15 @@
 
 #include "ESP8266WiFi.h"
 
-#include "EspConfig.h"
-
-#define PROGNAME "Esp1wire"
-#define PROGVERS "0.1"
-
 // KeyValueProtocol with full format keys
 //#define KVP_LONG_KEY_FORMAT 1
 #include "KVPSensors.h"
 
-
-// The following settings can also be set from FHEM
-#define DEBUG_DISABLED        0x0
-#define DEBUG_MODE            0x1
-#define DEBUG_PACKET_RAW      0x2
-#define DEBUG_UNDECODED_RAW   0x4
-byte DEBUG                    = DEBUG_DISABLED;        // bit mask 1=debug, 2=packet raw data, 3=undecoded packet raw data
-
 byte BMP_ID                   = 0;
-bool sendUdpPackets           = true;
 bool httpRequestProcessed     = false;
 
 //#define _DEBUG
-//#define _DEBUG_SETUP
+#define _DEBUG_SETUP
 #define _DEBUG_TIMING
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
@@ -37,7 +23,16 @@ bool httpRequestProcessed     = false;
 // EspWifi
 //#define _ESP_WIFI_UDP_MULTICAST_DISABLED
 
+#define PROGNAME "Esp1wire"
+#define PROGVERS "0.1"
+
+#include "EspConfig.h"
 #include "Esp1wire.h"
+
+//#define _MQTT_SUPPORT
+
+// global config object
+EspConfig espConfig(PROGNAME);
 
 unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0;
 

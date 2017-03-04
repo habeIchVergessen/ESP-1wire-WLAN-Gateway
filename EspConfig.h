@@ -34,4 +34,6 @@ protected:
   bool openWrite();
 };
 
+extern EspConfig espConfig;
+
 #endif	// _ESP_CONFIG_H

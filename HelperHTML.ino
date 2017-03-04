@@ -1,3 +1,7 @@
+#ifdef _MQTT_SUPPORT
+  #include "EspConfig.h"
+#endif
+
 #define textMark         F("\"")
 #define actionField      F(" action=")
 #define enctypeField     F(" enctype=")
@@ -11,6 +15,9 @@ String htmlBody(String html) {
   String doc = F("<html><body><style>label {width: 4em; text-align:left; display: inline-block;} input[type=text] { width: 20em; margin-bottom: 2px;} </style><center><div style=\"width: 40em;\">");
   doc += "<h1>"; doc += PROGNAME; doc += " v"; doc += PROGVERS; doc += "@" + getChipID() + "</h1>";
   doc += wifiForm();
+#ifdef _MQTT_SUPPORT
+  doc += mqttForm();
+#endif
   doc += flashForm();
   html.replace("\n", "<br>");
   doc += html;
@@ -35,6 +42,27 @@ String wifiForm() {
 
   return htmlForm(html, action, "post", "", "Wifi");
 }
+
+#ifdef _MQTT_SUPPORT
+String mqttForm() {
+  String action = F("/config?ChipID=");
+  action += getChipID();
+  action += F("&mqtt=submit");
+
+  String html = htmlLabel("server", "server: ");
+  html += htmlInput("server", "", espConfig.getValue("mqttServer"), 40) + htmlNewLine();
+  html += htmlLabel("port", "port: ");
+  html += htmlInput("port", "", espConfig.getValue("mqttPort"), 5) + htmlNewLine();
+  html += htmlLabel("user", "user: ");
+  html += htmlInput("user", "", espConfig.getValue("mqttUser"), 40) + htmlNewLine();
+  html += htmlLabel("password", "password: ");
+  html += htmlInput("password", "", "", 40) + htmlNewLine();
+  html += htmlButton("submit", "action", "setup", "Setup");
+  html += htmlButton("submit", "action", "test", "Test");
+
+  return htmlForm(html, action, "post", "", "MQTT");
+}
+#endif  // _MQTT_SUPPORT
 
 String flashForm() {
   String action = F("/ota/");
