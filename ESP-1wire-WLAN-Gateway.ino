@@ -22,7 +22,7 @@
 byte DEBUG                    = DEBUG_DISABLED;        // bit mask 1=debug, 2=packet raw data, 3=undecoded packet raw data
 
 byte BMP_ID                   = 0;
-bool sendUdpPackets = false;
+bool sendUdpPackets           = true;
 bool httpRequestProcessed     = false;
 
 //#define _DEBUG
@@ -183,12 +183,11 @@ void readTemperatures() {
     Esp1wire::TemperatureDevice *device = deviceFilter.getNextDevice();
 
     float tempC;
-    Serial.print(device->getOneWireDeviceID());
+    String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
     unsigned long tempStart;
-    tempStart= micros();
+    tempStart = micros();
     if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC))
-      Serial.print(" read " + (String)tempC + " " + elapTime(tempStart));
-//      tempStart = micros();
+      message += SensorDataValue(Temperature, tempC); // + " " + elapTime(tempStart));
 //      // reset alarm (set same value for low and high; next calculation updates alarm flag)
 //      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
 //        Serial.print(" set alarm " + elapTime(tempStart));
@@ -196,7 +195,7 @@ void readTemperatures() {
 //        if (((Esp1wire::TemperatureDevice*)device)->requestTemperatureC(&tempC))
 //          Serial.print(" req " + (String)tempC + " " + elapTime(tempStart));
 
-    Serial.println();
+    sendMessage(message, tempStart);
   }
 }
 
@@ -232,37 +231,165 @@ String getDictionary() {
 
 #ifndef KVP_LONG_KEY_FORMAT
   result +=
-  DictionaryValue(Temperature) +
-  DictionaryValue(Pressure) +
-  DictionaryValue(Humidity) +
-  DictionaryValue(WindSpeed) +
-  DictionaryValue(WindDirection) +
-  DictionaryValue(WindGust) +
-  DictionaryValue(WindGustRef) +
-  DictionaryValue(RainTipCount) +
-  DictionaryValue(RainSecs) +
-  DictionaryValue(Solar) +
-  DictionaryValue(VoltageSolar) +
-  DictionaryValue(VoltageCapacitor) +
-  DictionaryValue(SoilLeaf) +
-  DictionaryValue(UV) +
-  DictionaryValue(Channel) +
-  DictionaryValue(Battery) +
-  DictionaryValue(RSSI) +
-  DictionaryValuePort(SoilTemperature, 1) + 
-  DictionaryValuePort(SoilMoisture, 1) + 
-  DictionaryValuePort(SoilTemperature, 2) + 
-  DictionaryValuePort(SoilMoisture, 2) + 
-  DictionaryValuePort(SoilTemperature, 3) + 
-  DictionaryValuePort(SoilMoisture, 3) + 
-  DictionaryValuePort(SoilTemperature, 4) + 
-  DictionaryValuePort(SoilMoisture, 4) + 
-  DictionaryValuePort(LeafWetness, 1) +
-  DictionaryValuePort(LeafWetness, 2) +
-  DictionaryValue(PacketDump);
+  DictionaryValue(Temperature);// +
+//  DictionaryValue(Pressure) +
+//  DictionaryValue(Humidity) +
+//  DictionaryValue(WindSpeed) +
+//  DictionaryValue(WindDirection) +
+//  DictionaryValue(WindGust) +
+//  DictionaryValue(WindGustRef) +
+//  DictionaryValue(RainTipCount) +
+//  DictionaryValue(RainSecs) +
+//  DictionaryValue(Solar) +
+//  DictionaryValue(VoltageSolar) +
+//  DictionaryValue(VoltageCapacitor) +
+//  DictionaryValue(SoilLeaf) +
+//  DictionaryValue(UV) +
+//  DictionaryValue(Channel) +
+//  DictionaryValue(Battery) +
+//  DictionaryValue(RSSI) +
+//  DictionaryValuePort(SoilTemperature, 1) + 
+//  DictionaryValuePort(SoilMoisture, 1) + 
+//  DictionaryValuePort(SoilTemperature, 2) + 
+//  DictionaryValuePort(SoilMoisture, 2) + 
+//  DictionaryValuePort(SoilTemperature, 3) + 
+//  DictionaryValuePort(SoilMoisture, 3) + 
+//  DictionaryValuePort(SoilTemperature, 4) + 
+//  DictionaryValuePort(SoilMoisture, 4) + 
+//  DictionaryValuePort(LeafWetness, 1) +
+//  DictionaryValuePort(LeafWetness, 2) +
+//  DictionaryValue(PacketDump);
 #endif
 
   return result;
 }
 
+void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
+  switch (r) {
+    case 'v':
+      // Version info
+      handleCommandV();
+      print_config();
+      break;
+    case ' ':
+    case '\n':
+    case '\r':
+      break;
+    default:
+      handleCommandV();
+/*
+#ifndef NOHELP
+      Help::Show();
+#endif
+*/      break;
+    }
+}
+
+void handleSerialPort(char c) {
+  static long value, value2;
+  bool hasValue, hasValue2;
+  char r = c;
+
+  // reset variables
+  value = 0; hasValue = false;
+  value2 = 0; hasValue2 = false;
+  
+  byte sign = 0;
+  // char is a number
+  if ((r >= '0' && r <= '9') || r == '-'){
+    byte delays = 2;
+    while ((r >= '0' && r <= '9') || r == ',' || r == '-') {
+      if (r == '-') {
+        sign = 1;
+      } else {
+        // check value separator
+        if (r == ',') {
+          if (!hasValue || hasValue2) {
+            print_warning(2, "format");
+            return;
+          }
+          
+          hasValue2 = true;
+          if (sign == 0) {
+            value = value * -1;
+            sign = 0;
+          }
+        } else {
+          if (!hasValue || !hasValue2) {
+            value = value * 10 + (r - '0');
+            hasValue = true;
+          } else {
+            value2 = value2 * 10 + (r - '0');
+            hasValue2 = true;
+          }
+        }
+      }
+            
+      // wait a little bit for more input
+      while (Serial.available() == 0 && delays > 0) {
+        delay(20);
+        delays--;
+      }
+
+      // more input available
+      if (delays == 0 && Serial.available() == 0) {
+        return;
+      }
+
+      r = Serial.read();
+    }
+  }
+
+  // Vorzeichen
+  if (sign == 1) {
+    if (hasValue && !hasValue2)
+      value = value * -1;
+    if (hasValue && hasValue2)
+      value2 = value2 * -1;
+  }
+
+  handleInput(r, hasValue, value, hasValue2, value2);
+}
+
+void handleCommandV() {
+  Serial.print("[");
+  Serial.print(PROGNAME);
+  Serial.print('.');
+  Serial.print(PROGVERS);
+
+  Serial.print("] ");
+}
+
+void bmpDataCallback(float temperature, int pressure) {
+  sendMessage((String)SensorDataHeader("BMP180", BMP_ID) + SensorDataValue(Temperature, temperature) + SensorDataValue(Pressure, pressure));
+}
+
+void sendMessage(String message) {
+  Serial.println(message);  
+  sendMultiCast(message);
+}
+
+void sendMessage(String message, unsigned long startTime) {
+  Serial.println(message + " " + elapTime(startTime));  
+  sendMultiCast(message);
+}
+
+// helper
+void print_config() {
+  String blank = F(" ");
+  
+  Serial.print(F("config:"));
+}
+
+void print_warning(byte type, String msg) {
+  return;
+  Serial.print(F("\nwarning: "));
+  if (type == 1)
+    Serial.print(F("skipped incomplete command "));
+  if (type == 2)
+    Serial.print(F("wrong parameter "));
+  if (type == 3)
+    Serial.print(F("failed: "));
+  Serial.println(msg);
+}
 
