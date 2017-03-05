@@ -273,6 +273,11 @@ String getDictionary() {
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
   switch (r) {
+//    case 'p':
+//      esp1wire.probeI2C();
+//      esp1wire.probeGPIO();
+//      listDevices();
+//      break;
     case 'r':
       esp1wire.resetSearch();
       listDevices();

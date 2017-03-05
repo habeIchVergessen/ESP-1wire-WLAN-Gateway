@@ -87,6 +87,7 @@ class Esp1wire {
         Busmaster(DS2482 *ds2482, byte i2cPort, BusmasterType busmasterType);
         String          getName();
         BusmasterType   getType();
+        bool            busAddressInUse(uint8_t busAddress) { return (mI2CPort == busAddress); };
 
         bool            selectChannel(uint8_t channel);
         bool            wireReset();
@@ -135,6 +136,7 @@ class Esp1wire {
         
         virtual DeviceList *getFirstDevice();
         virtual String    getBusInformation();
+        virtual bool      busAddressInUse(uint8_t busAddress);
 
         // forwarded functions
         virtual bool    reset();
@@ -171,6 +173,7 @@ class Esp1wire {
 
         DeviceList *getFirstDevice() override;
         String getBusInformation() override;
+        bool busAddressInUse(uint8_t busAddress) override { return mBusmaster->busAddressInUse(busAddress); };
 
         // forwarded functions
         bool reset() override;
@@ -196,6 +199,7 @@ class Esp1wire {
 
         DeviceList *getFirstDevice() override;
         String getBusInformation() override;
+        bool busAddressInUse(uint8_t busAddress) override { return (mGPIOPort == busAddress); };
 
         // forwarded functions
         bool reset() override;
@@ -500,11 +504,12 @@ class Esp1wire {
     // class AlarmFilter
     class AlarmFilter {
       public:
+        AlarmFilter();
         ~AlarmFilter();
         bool              hasNext();
         Device            *getNextDevice();
       protected:
-        Bus::DeviceList   *alarmList = NULL, *currList, *lastList;
+        Bus::DeviceList   *alarmList = NULL, *currList = NULL, *lastList = NULL;
         bool              mStarted = false;
     };
 
@@ -572,6 +577,7 @@ class Esp1wire {
     bool            addGPIO(OneWire *oneWire, byte gpioPort);
     bool            addBus(Bus *bus);
     void            freeAlarmFilter();
+    bool            busAddressInUse(uint8_t busAddress);
 };
 
 Esp1wire esp1wire;

@@ -1,6 +1,8 @@
 #include "Esp1wire.h"
 
 Esp1wire::Esp1wire() {
+  alarmFilter = NULL;
+  firstBus = lastBus = NULL;
 }
 
 #ifdef _DEBUG_TEST_DATA
@@ -31,6 +33,9 @@ bool Esp1wire::probeI2C(uint8_t sda, uint8_t scl) {
   // probe I2C busmaster
   for (byte i = 0; i <= 3; i++) {
     byte addr = (0x18 | i);
+
+    if (busAddressInUse(addr))
+      continue;
     Wire.beginTransmission(addr);
     byte error = Wire.endTransmission();
 
@@ -197,6 +202,19 @@ void Esp1wire::freeAlarmFilter() {
     free(alarmFilter);
     alarmFilter = NULL;
   }
+}
+
+bool Esp1wire::busAddressInUse(uint8_t busAddress) {
+  BusList *curr = firstBus;
+
+  while (curr != NULL) {
+    if (curr->bus->busAddressInUse(busAddress)) {
+      return true;
+    }
+    curr = curr->next;
+  }
+
+  return false;
 }
 
 // class Esp1wire Busmaster
@@ -507,6 +525,10 @@ bool Esp1wire::BusIC::alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSea
   DeviceList *currList = firstDevice;    // set to first element
 
   while (mBusmaster->wireSearch(address, true, targetSearch)) {
+    // found device that doesn't match family code
+    if (targetSearch != DeviceTypeAll && currList->device->getDeviceType() != targetSearch)
+      continue;
+
     while (currList != NULL) {
       int8_t addrComp = ((HelperDevice*)currList->device)->compareAddress(address);
       if (addrComp == 0) {
@@ -519,7 +541,7 @@ bool Esp1wire::BusIC::alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSea
       }
       if (addrComp > 0) {
         Serial.println("BusIC::alarmSearch: new device found " + HelperDevice::getOneWireDeviceID(address));
-        break;
+        return true;
       }
     }
   }
@@ -1488,6 +1510,10 @@ Esp1wire::TemperatureDevice* Esp1wire::TemperatureDeviceFilter::getNextDevice() 
 }
 
 // class AlarmFilter
+Esp1wire::AlarmFilter::AlarmFilter() {
+  alarmList = currList = lastList = NULL;
+}
+
 Esp1wire::AlarmFilter::~AlarmFilter() {
   while (alarmList != NULL) {
     currList = alarmList->next;
