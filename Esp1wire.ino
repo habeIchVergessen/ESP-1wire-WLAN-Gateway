@@ -39,6 +39,8 @@ bool Esp1wire::probeI2C(uint8_t sda, uint8_t scl) {
 
       if (ds2482->reset())
         addBusmaster(ds2482, addr, (ds2482->selectChannel(0) ? DS2482_800 : DS2482_100));
+      else
+        free(ds2482);
     }
   }
 #ifdef _DEBUG_SETUP
@@ -58,9 +60,10 @@ bool Esp1wire::probeGPIO(uint8_t gpio) {
   OneWire *oneWire = new OneWire(gpio);
 
   // probe gpio
-  if (oneWire->reset()) {
+  if (oneWire->reset())
     addBus(new BusGPIO(oneWire, gpio));
-  }
+  else
+    free(oneWire);
 
 #ifdef _DEBUG_SETUP
   Serial.println((busCount < getBusCount()) ? F("ok") : F("failed"));
@@ -350,8 +353,12 @@ void Esp1wire::Bus::registerTemperatureDevice(bool parasite, uint8_t resolution)
 void Esp1wire::Bus::deviceDetected(uint8_t *address) {
   DeviceType deviceType = getDeviceType(address);
 
-  if (this->crc8(address, 7) != address[7])
+  if (this->crc8(address, 7) != address[7]) {
+#ifdef _DEBUG_SETUP
+    Serial.print(HelperDevice::getOneWireDeviceID(address) + " (crc error)");
+#endif
     return;
+  }
 
   // add first device
   if (firstDevice == NULL) {

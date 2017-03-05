@@ -48,6 +48,7 @@ void setup() {
   printHeapFree();
 
   if (!esp1wire.probeI2C() && !esp1wire.probeGPIO())
+//  if (!esp1wire.probeI2C())
     Serial.println("no 1-wire detected!");
   else
     esp1wire.resetSearch();
@@ -130,6 +131,11 @@ void loop() {
 
   // handle wifi
   loopEspWifi();
+
+  // handle input
+  if (Serial.available()) {
+    handleSerialPort(Serial.read());
+  }
 }
 
 void alarmSearch() {
@@ -228,6 +234,14 @@ void readBatteries() {
   }
 }
 
+void listDevices() {
+  Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter();
+  while (deviceFilter.hasNext()) {
+    Esp1wire::Device *device = deviceFilter.getNextDevice();
+    Serial.println("device: " + device->getOneWireDeviceID() + " -> " + device->getName());
+  }
+}
+
 void printHeapFree() {
 #ifdef _DEBUG_HEAP
   Serial.println((String)F("heap: ") + (String)(ESP.getFreeHeap()));
@@ -259,6 +273,10 @@ String getDictionary() {
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
   switch (r) {
+    case 'r':
+      esp1wire.resetSearch();
+      listDevices();
+      break;
     case 'v':
       // Version info
       handleCommandV();
@@ -378,6 +396,7 @@ void print_config() {
   String blank = F(" ");
   
   Serial.print(F("config:"));
+  Serial.println();
 }
 
 void print_warning(byte type, String msg) {
