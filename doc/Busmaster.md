@@ -15,7 +15,7 @@
 | void | **wireWriteByte(uint8_t b)** | DS2482 wireWriteByte |
 | | b byte to write |
 | uint8_t | **wireReadBit()** | OneWire/DS2482 wireReadBit |
-| void | **wireReadBytes(uint8_t *data, uint16_t len) | DS2482 wireReadBytes |
+| void | **wireReadBytes(uint8_t *data, uint16_t len)** | DS2482 wireReadBytes |
 | | data | receive buffer |
 | | len | amount of bytes to receive |
 | bool | **wireSearch(uint8_t *address, bool alarm, DeviceType targetSearch)** | DS2482 wireSearch |

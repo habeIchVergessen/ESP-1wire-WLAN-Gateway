@@ -1,6 +1,7 @@
 #include "Esp1wire.h"
 
 Esp1wire::Esp1wire() {
+  firstBus = lastBus = NULL;
 }
 
 #ifdef _DEBUG_TEST_DATA
@@ -31,6 +32,9 @@ bool Esp1wire::probeI2C(uint8_t sda, uint8_t scl) {
   // probe I2C busmaster
   for (byte i = 0; i <= 3; i++) {
     byte addr = (0x18 | i);
+
+    if (busAddressInUse(addr))
+      continue;
     Wire.beginTransmission(addr);
     byte error = Wire.endTransmission();
 
@@ -51,6 +55,7 @@ bool Esp1wire::probeI2C(uint8_t sda, uint8_t scl) {
 }
 
 bool Esp1wire::probeGPIO(uint8_t gpio) {
+
 #ifdef _DEBUG_SETUP
   Serial.print("\nprobe gpio #" + (String)gpio + ": ");
 #endif
@@ -128,7 +133,6 @@ Esp1wire::AlarmFilter Esp1wire::alarmSearch(DeviceType targetSearch) {
   BusList *curr = firstBus;
 
   freeAlarmFilter();
-  alarmFilter = new AlarmFilter();
 
   uint8_t bus = 1;
   while (curr != NULL) {
@@ -136,7 +140,7 @@ Esp1wire::AlarmFilter Esp1wire::alarmSearch(DeviceType targetSearch) {
     Serial.print("bus #" + (String)bus + ": alarm search ");
     unsigned long start = micros();
 #endif
-    curr->bus->alarmSearch(alarmFilter, targetSearch);
+    curr->bus->alarmSearch(targetSearch);
 
 #if defined(_DEBUG_TIMING) || defined(_DEBUG_SETUP)
     Serial.println(" " + elapTime(start));
@@ -145,7 +149,7 @@ Esp1wire::AlarmFilter Esp1wire::alarmSearch(DeviceType targetSearch) {
     bus++;
   }
 
-  return *alarmFilter;
+  return AlarmFilter(alarmFirst);
 }
 
 bool Esp1wire::requestTemperatures (bool resetIgnoreAlarmFlags) {
@@ -192,11 +196,49 @@ bool Esp1wire::requestBatteries() {
   }
 }
 
-void Esp1wire::freeAlarmFilter() {
-  if (alarmFilter != NULL) {
-    free(alarmFilter);
-    alarmFilter = NULL;
+void Esp1wire::addAlarmFilter(Device *device) {
+  if (device->getIgnoreAlarmSearch())
+    return;
+
+  if (alarmFirst == NULL) {
+    alarmFirst = alarmLast = new Bus::DeviceList();
+    alarmFirst->device = device;
+    alarmFirst->next = NULL;
+  } else {
+    Bus::DeviceList *newList = new Bus::DeviceList();
+    newList->device = device;
+    newList->next = NULL;
+
+    alarmLast->next = newList;
+    alarmLast = newList;
   }
+}
+
+void Esp1wire::freeAlarmFilter() {
+  Bus::DeviceList *currList;
+
+  while (alarmFirst != NULL) {
+    currList = alarmFirst->next;
+    delete alarmFirst;
+    alarmFirst = currList;
+  }
+
+  // global variables
+  alarmFirst = NULL;
+  alarmLast = NULL;
+}
+
+bool Esp1wire::busAddressInUse(uint8_t busAddress) {
+  BusList *curr = firstBus;
+
+  while (curr != NULL) {
+    if (curr->bus->busAddressInUse(busAddress)) {
+      return true;
+    }
+    curr = curr->next;
+  }
+
+  return false;
 }
 
 // class Esp1wire Busmaster
@@ -247,6 +289,11 @@ void Esp1wire::Busmaster::wireResetSearch() {
     searchAddress[i] = 0;
 }
 
+void Esp1wire::Busmaster::target_search(OneWireDeviceType oneWireDeviceType) {
+  searchAddress[0] = DS2406;
+  searchLastDiscrepancy = 64;
+}
+
 uint8_t Esp1wire::Busmaster::busyWait(bool setReadPtr) {
   uint8_t status;
   int loopCount = 1000;
@@ -266,15 +313,6 @@ bool Esp1wire::Busmaster::wireSearch(uint8_t *address, bool alarm, DeviceType ta
   uint8_t i;
   uint8_t direction;
   uint8_t last_zero = 0;
-
-  // use target search for switches
-  if (alarm)
-    switch (targetSearch) {
-      case DeviceTypeSwitch:
-        searchAddress[0] = DS2406;
-        searchLastDiscrepancy = 64;
-        break;
-    }
 
   if (searchExhausted || !wireReset())
     return false;
@@ -422,7 +460,45 @@ void Esp1wire::Bus::deviceDetected(uint8_t *address) {
       firstDevice = deviceList;
     else
       prevDevice->next = deviceList;
+    break;  // leaf while after insert
   }
+}
+
+void Esp1wire::Bus::alarmSearchHandleFound(uint8_t *address) {
+  bool found = false;
+
+  while (currDevice != NULL) {
+    int8_t addrComp = ((HelperDevice*)currDevice->device)->compareAddress(address);
+    if (addrComp == 0) {
+      esp1wire.addAlarmFilter(currDevice->device);
+      return;
+    }
+    if (addrComp < 0) {
+      currDevice = currDevice->next;
+      continue;
+    }
+
+    // found new device (in list)
+    break;
+  }
+
+//  if (currDevice == NULL) {       // found new device (first or last)
+//    if (firstDevice == NULL) {    // first
+//      Serial.println("Bus::alarmSearchHandleFound: new device found " + HelperDevice::getOneWireDeviceID(address) + " (first)");
+//      firstDevice = lastDevice = currDevice = new DeviceList();
+//      firstDevice->device = new Device(this, address, getDeviceType(address));
+//      firstDevice->next = NULL;
+//    } else {                      // last
+//      Serial.println("Bus::alarmSearchHandleFound: new device found " + HelperDevice::getOneWireDeviceID(address) + " (last)");
+//      DeviceList *newList = new DeviceList();
+//      newList->device = new Device(this, address, getDeviceType(address));
+//      newList->next = NULL;
+//      lastDevice->next = newList;
+//      lastDevice = currDevice = newList;
+//    }
+//  } else if (!found) {            // found new device (in list)
+//    Serial.println("Bus::alarmSearchHandleFound: new device found " + HelperDevice::getOneWireDeviceID(address));
+//  }
 }
 
 Esp1wire::DeviceType Esp1wire::Bus::getDeviceType(uint8_t *address) {
@@ -499,29 +575,32 @@ bool Esp1wire::BusIC::resetSearch() {
   return true;
 }
 
-bool Esp1wire::BusIC::alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSearch) {
+bool Esp1wire::BusIC::alarmSearch(DeviceType targetSearch) {
+  currDevice = firstDevice;    // init global variable
+
   selectChannel();
   wireResetSearch();
 
-  uint8_t address[8];
-  DeviceList *currList = firstDevice;    // set to first element
+  // use target search for switches
+  switch (targetSearch) {
+    case DeviceTypeSwitch:
+      mBusmaster->target_search(DS2406);
+      break;
+  }
+
+  uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
   while (mBusmaster->wireSearch(address, true, targetSearch)) {
-    while (currList != NULL) {
-      int8_t addrComp = ((HelperDevice*)currList->device)->compareAddress(address);
-      if (addrComp == 0) {
-        ((HelperAlarmFilter*)alarmFilter)->addDevice(currList->device);
-        break;
-      }
-      if (addrComp < 0) {
-        currList = currList->next;
-        continue;
-      }
-      if (addrComp > 0) {
-        Serial.println("BusIC::alarmSearch: new device found " + HelperDevice::getOneWireDeviceID(address));
-        break;
-      }
-    }
+    // found device that doesn't match family code
+    if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
+      break;
+
+    // prevent infinite loop (forced by an fixed bug in Busmaster::wireSearch)
+    if (HelperDevice::compareAddress(address, last) == 0)
+      break;
+    memcpy(last, address, sizeof(address));
+
+    alarmSearchHandleFound(address);
   }
 
   return true;
@@ -595,7 +674,7 @@ bool Esp1wire::BusGPIO::resetSearch() {
   return true;
 }
 
-bool Esp1wire::BusGPIO::alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSearch) {
+bool Esp1wire::BusGPIO::alarmSearch(DeviceType targetSearch) {
   if (!mOneWire->reset())
     return false;
   wireResetSearch();
@@ -607,26 +686,22 @@ bool Esp1wire::BusGPIO::alarmSearch(AlarmFilter *alarmFilter, DeviceType targetS
       break;
   }
 
-  uint8_t address[8];
-  DeviceList *currList = firstDevice;
+  uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  currDevice = firstDevice;
 
-  while (mOneWire->search(address, true))
-    while (currList != NULL) {
-      int8_t addrComp = ((HelperDevice*)currList->device)->compareAddress(address);
-      if (addrComp == 0) {
-        ((HelperAlarmFilter*)alarmFilter)->addDevice(currList->device);
-        break;
-      }
-      if (addrComp < 0) {
-        currList = currList->next;
-        continue;
-      }
-      if (addrComp > 0) {
-        Serial.println("BusGPIO::alarmSearch: new device found " + HelperDevice::getOneWireDeviceID(address));
-        break;
-      }
-    }
+  while (mOneWire->search(address, true)) {
+    // found device that doesn't match family code
+    if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
+      break;
 
+    // prevent infinite loop
+    if (HelperDevice::compareAddress(address, last) == 0)
+      break;
+    memcpy(last, address, sizeof(address));
+
+    alarmSearchHandleFound(address);
+  }
+  
   return true;
 }
 
@@ -779,10 +854,14 @@ String Esp1wire::HelperDevice::getOneWireDeviceID(uint8_t *address) {
 }
 
 int8_t Esp1wire::HelperDevice::compareAddress(uint8_t *address) {
+  return HelperDevice::compareAddress(mAddress, address);
+}
+
+int8_t Esp1wire::HelperDevice::compareAddress(uint8_t *addr1, uint8_t *addr2) {
   for (byte i = 0; i < 8; i++) {
-    if (mAddress[i] < address[i])
+    if (addr1[i] < addr2[i])
       return -1;
-    if (mAddress[i] > address[i])
+    if (addr1[i] > addr2[i])
       return 1;
   }
 
@@ -1488,20 +1567,10 @@ Esp1wire::TemperatureDevice* Esp1wire::TemperatureDeviceFilter::getNextDevice() 
 }
 
 // class AlarmFilter
-Esp1wire::AlarmFilter::~AlarmFilter() {
-  while (alarmList != NULL) {
-    currList = alarmList->next;
-    delete alarmList;
-    alarmList = currList;
-  }
-
-  alarmList = currList = lastList = NULL;
-};
-
 bool Esp1wire::AlarmFilter::hasNext() {
   if (!mStarted) {             // first call
     mStarted = true;
-    currList = alarmList;
+    currList = firstList;
 
     return (currList != NULL);
   }
@@ -1519,24 +1588,5 @@ Esp1wire::Device* Esp1wire::AlarmFilter::getNextDevice() {
     return NULL;
 
   return currList->device;
-}
-
-// class HelperAlarmFilter
-void Esp1wire::HelperAlarmFilter::addDevice(Device *device) {
-  if (device->getIgnoreAlarmSearch())
-    return;
-
-  if (alarmList == NULL) {
-    alarmList = lastList = new Bus::DeviceList();
-    alarmList->device = device;
-    alarmList->next = NULL;
-  } else {
-    Bus::DeviceList *newList = new Bus::DeviceList();
-    newList->device = device;
-    newList->next = NULL;
-
-    lastList->next = newList;
-    lastList = newList;
-  }
 }
 

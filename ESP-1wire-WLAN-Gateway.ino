@@ -29,12 +29,14 @@ bool httpRequestProcessed     = false;
 #include "EspConfig.h"
 #include "Esp1wire.h"
 
+Esp1wire esp1wire;
+
 #define _MQTT_SUPPORT
 
 // global config object
 EspConfig espConfig(PROGNAME);
 
-unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0;
+unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0, lastAlarmAll = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -100,7 +102,7 @@ void setup() {
   printHeapFree();
 
 #ifdef _DEBUG_TEST_DATA
-    esp1wire.testData();
+  esp1wire.testData();
 #endif
 }
 
@@ -112,13 +114,13 @@ void loop() {
   }
   
   // read counter
-  if ((lastCounter + 120000) < millis()) {
+  if ((lastCounter + 60000) < millis()) {
     readCounter();
     lastCounter = millis();
   }
   
   // read temp
-  if ((lastTemp + 120000) < millis()) {
+  if ((lastTemp + 60000) < millis()) {
     readTemperatures();
     lastTemp = millis();
   }
@@ -273,9 +275,15 @@ String getDictionary() {
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
   switch (r) {
+//    case 'p':
+//      esp1wire.probeI2C();
+//      esp1wire.probeGPIO();
+//      listDevices();
+//      break;
     case 'r':
       esp1wire.resetSearch();
       listDevices();
+      Serial.println("uptime: " + uptime());
       break;
     case 'v':
       // Version info
@@ -409,5 +417,23 @@ void print_warning(byte type, String msg) {
   if (type == 3)
     Serial.print(F("failed: "));
   Serial.println(msg);
+}
+
+String uptime() {
+  String result = "";
+
+  unsigned long uptime = (millis() / 1000);
+
+  result += String((unsigned long)(uptime / 86400)) + " day(s) ";
+  uptime %= 86400;
+  uint8_t hours = uptime / 3600;
+  result += String(hours < 10 ? String("0") + hours : hours) + ":";
+  uptime %= 3600;
+  uint8_t minutes = uptime / 60;
+  result += String(minutes < 10 ? String("0") + minutes : minutes) + ".";
+  uptime %= 60;
+  result += String(uptime < 10 ? String("0") + uptime : uptime);
+
+  return result;
 }
 

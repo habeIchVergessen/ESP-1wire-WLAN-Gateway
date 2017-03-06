@@ -271,6 +271,10 @@ Serial.println("mqtt: " + server.arg("mqtt"));
 //        configEspMqtt();
       } else if (server.arg("action") == "setup") {
         espConfig.saveToFile();
+      } else if (server.arg("action") == "disable") {
+        Serial.println("disable mqtt");
+      } else if (server.arg("action") == "enable") {
+        Serial.println("enable mqtt");
       }
       server.client().setNoDelay(true);
       server.sendHeader("Location", "/");
