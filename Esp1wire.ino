@@ -460,6 +460,7 @@ void Esp1wire::Bus::deviceDetected(uint8_t *address) {
       firstDevice = deviceList;
     else
       prevDevice->next = deviceList;
+    break;  // leaf while after insert
   }
 }
 

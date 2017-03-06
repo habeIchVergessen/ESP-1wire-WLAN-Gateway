@@ -102,7 +102,7 @@ void setup() {
   printHeapFree();
 
 #ifdef _DEBUG_TEST_DATA
-    esp1wire.testData();
+  esp1wire.testData();
 #endif
 }
 
@@ -283,6 +283,7 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
     case 'r':
       esp1wire.resetSearch();
       listDevices();
+      Serial.println("uptime: " + uptime());
       break;
     case 'v':
       // Version info
@@ -416,5 +417,23 @@ void print_warning(byte type, String msg) {
   if (type == 3)
     Serial.print(F("failed: "));
   Serial.println(msg);
+}
+
+String uptime() {
+  String result = "";
+
+  unsigned long uptime = (millis() / 1000);
+
+  result += String((unsigned long)(uptime / 86400)) + " day(s) ";
+  uptime %= 86400;
+  uint8_t hours = uptime / 3600;
+  result += String(hours < 10 ? String("0") + hours : hours) + ":";
+  uptime %= 3600;
+  uint8_t minutes = uptime / 60;
+  result += String(minutes < 10 ? String("0") + minutes : minutes) + ".";
+  uptime %= 60;
+  result += String(uptime < 10 ? String("0") + uptime : uptime);
+
+  return result;
 }
 
