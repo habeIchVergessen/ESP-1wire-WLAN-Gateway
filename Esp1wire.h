@@ -62,9 +62,8 @@ class Esp1wire {
     AlarmFilter   alarmSearch(DeviceType targetSearch=DeviceTypeAll);
     bool          requestTemperatures(bool resetIgnoreAlarmFlags = false);
     bool          requestBatteries();
-    //bool          probeI2C(uint8_t sda = SDA, uint8_t scl = SCL);
-    bool          probeI2C(uint8_t sda = 4, uint8_t scl = 5);
-    bool          probeGPIO(uint8_t gpio = 2);
+    bool          probeI2C(uint8_t sda = SDA, uint8_t scl = SCL);
+    bool          probeGPIO(uint8_t gpio = 0);
 
     uint8_t                 getBusCount() { return mBusListCount; };
     DeviceFilter            getDeviceFilter(DeviceType filter=DeviceTypeAll) { return DeviceFilter(firstBus, filter); };

@@ -41,6 +41,8 @@ Esp1wire esp1wire;
   EspMqtt espMqtt(PROGNAME);
 #endif
 
+#define PFANNEX
+
 // global config object
 EspConfig espConfig(PROGNAME);
 
@@ -61,8 +63,11 @@ void setup() {
 
   printHeapFree();
 
+#ifdef PFANNEX
+  if (!esp1wire.probeI2C(4, 5) && !esp1wire.probeGPIO(2))
+#else
   if (!esp1wire.probeI2C() && !esp1wire.probeGPIO())
-//  if (!esp1wire.probeI2C())
+#endif
     Serial.println("no 1-wire detected!");
   else
     esp1wire.resetSearch();
