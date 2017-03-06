@@ -29,12 +29,14 @@ bool httpRequestProcessed     = false;
 #include "EspConfig.h"
 #include "Esp1wire.h"
 
+Esp1wire esp1wire;
+
 //#define _MQTT_SUPPORT
 
 // global config object
 EspConfig espConfig(PROGNAME);
 
-unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0;
+unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0, lastAlarmAll = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -78,8 +80,8 @@ void setup() {
       if (((Esp1wire::TemperatureDevice*)device)->powerSupply())
         Serial.print(" parasite");
 
-//      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
-//        Serial.print(" set");
+      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
+        Serial.print(" set");
       int8_t alarmLow, alarmHigh;
       if (((Esp1wire::TemperatureDevice*)device)->getAlarmTemperatures(&alarmLow, &alarmHigh)) {
         Serial.print(" alarm low: " + String(alarmLow) + " high: " + String(alarmHigh));
@@ -112,13 +114,13 @@ void loop() {
   }
   
   // read counter
-  if ((lastCounter + 120000) < millis()) {
+  if ((lastCounter + 60000) < millis()) {
     readCounter();
     lastCounter = millis();
   }
   
   // read temp
-  if ((lastTemp + 120000) < millis()) {
+  if ((lastTemp + 60000) < millis()) {
     readTemperatures();
     lastTemp = millis();
   }

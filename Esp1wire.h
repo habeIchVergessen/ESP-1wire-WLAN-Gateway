@@ -141,7 +141,7 @@ class Esp1wire {
         // forwarded functions
         virtual bool    reset();
         virtual bool    resetSearch();
-        virtual bool    alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSearch=DeviceTypeAll);
+        virtual bool    alarmSearch(DeviceType targetSearch=DeviceTypeAll);
         virtual void    wireResetSearch();
         virtual void    wireSelect(uint8_t *address);
         virtual void    wireWriteByte(uint8_t b);
@@ -178,7 +178,7 @@ class Esp1wire {
         // forwarded functions
         bool reset() override;
         bool resetSearch() override;
-        bool alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSearch) override;
+        bool alarmSearch(DeviceType targetSearch) override;
         bool selectChannel();
         void wireResetSearch() override;
         void wireSelect(uint8_t *address) override;
@@ -205,7 +205,7 @@ class Esp1wire {
         bool reset() override;
         bool resetSearch() override;
         void wireResetSearch() override;
-        bool alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSearch) override;
+        bool alarmSearch(DeviceType targetSearch) override;
         void wireSelect(uint8_t *address) override;
         void wireWriteByte(uint8_t b) override;
         uint8_t wireReadBit() override;
@@ -504,21 +504,25 @@ class Esp1wire {
     // class AlarmFilter
     class AlarmFilter {
       public:
-        AlarmFilter();
-        ~AlarmFilter();
+        AlarmFilter(Bus::DeviceList *first) { firstList = first; };
         bool              hasNext();
         Device            *getNextDevice();
       protected:
-        Bus::DeviceList   *alarmList = NULL, *currList = NULL, *lastList = NULL;
+        Bus::DeviceList   *firstList, *currList;
         bool              mStarted = false;
     };
 
   protected:
+    // data and managent function AlarmFilter
+    Bus::DeviceList   *alarmFirst, *alarmLast;
+    void addAlarmFilter(Device *device);
+    
     // class HelperDevice
     class HelperDevice : public Device {
     public:
       int8_t            compareAddress(uint8_t *address);
 
+      static int8_t     compareAddress(uint8_t *addr1, uint8_t *addr2);
       static String     getOneWireDeviceID(uint8_t *address);
     };
     
@@ -562,14 +566,8 @@ class Esp1wire {
       static bool readScratch(Bus *bus, byte *address, uint8_t page, uint8_t data[8]);
     };
 
-    // class HelperAlarmFilter
-    class HelperAlarmFilter : public AlarmFilter {
-      public:
-        void        addDevice(Device *device);
-    };
   private:
 
-    AlarmFilter     *alarmFilter;
     BusList         *firstBus = NULL, *lastBus = NULL;
     uint8_t         mBusListCount = 0;
 
@@ -580,6 +578,6 @@ class Esp1wire {
     bool            busAddressInUse(uint8_t busAddress);
 };
 
-Esp1wire esp1wire;
+extern Esp1wire esp1wire;
 
 #endif  // Esp1wire_h
