@@ -89,6 +89,7 @@ class Esp1wire {
         BusmasterType   getType();
         bool            busAddressInUse(uint8_t busAddress) { return (mI2CPort == busAddress); };
 
+        void            target_search(OneWireDeviceType oneWireDeviceType);
         bool            selectChannel(uint8_t channel);
         bool            wireReset();
         void            wireSelect(uint8_t *address);
@@ -153,8 +154,9 @@ class Esp1wire {
         void            deviceDetected(uint8_t *address);
         int8_t          addressCompare(uint8_t *addr1, uint8_t *addr2);
         DeviceType      getDeviceType(uint8_t *address);
+        void            alarmSearchHandleFound(uint8_t *address);
 
-        DeviceList      *firstDevice = NULL, *lastDevice = NULL;
+        DeviceList      *firstDevice = NULL, *lastDevice = NULL, *currDevice = NULL;
         uint16_t        mDeviceListCount = 0;
         uint16_t        mTemperatureDeviceCount = 0;
         uint8_t         mStatus;
