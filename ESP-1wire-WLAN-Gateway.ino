@@ -18,7 +18,7 @@ bool httpRequestProcessed     = false;
 #define _DEBUG_TIMING
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
-//#define _DEBUG_TEST_DATA
+#define _DEBUG_TEST_DATA
 
 // EspWifi
 //#define _ESP_WIFI_UDP_MULTICAST_DISABLED
@@ -31,7 +31,7 @@ bool httpRequestProcessed     = false;
 
 Esp1wire esp1wire;
 
-//#define _MQTT_SUPPORT
+#define _MQTT_SUPPORT
 
 // global config object
 EspConfig espConfig(PROGNAME);
@@ -41,9 +41,9 @@ unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0, lastAl
 void setup() {
   Serial.begin(115200);
   yield();
-
-  Serial.println("\n\n");
   
+  Serial.println("\n\n"); 
+   
   setupEspTools();
   setupEspWifi();
 
