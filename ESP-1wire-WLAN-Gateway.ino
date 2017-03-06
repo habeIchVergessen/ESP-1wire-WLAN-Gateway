@@ -33,6 +33,14 @@ Esp1wire esp1wire;
 
 #define _MQTT_SUPPORT
 
+#ifdef _MQTT_SUPPORT
+  #include "WiFiClient.h"
+  #include "PubSubClient.h"
+  #include "EspMqtt.h"
+
+  EspMqtt espMqtt(PROGNAME);
+#endif
+
 // global config object
 EspConfig espConfig(PROGNAME);
 
@@ -46,6 +54,10 @@ void setup() {
    
   setupEspTools();
   setupEspWifi();
+
+#ifdef _MQTT_SUPPORT
+  espMqtt.connect();
+#endif
 
   printHeapFree();
 
@@ -138,6 +150,11 @@ void loop() {
   if (Serial.available()) {
     handleSerialPort(Serial.read());
   }
+
+#ifdef _MQTT_SUPPORT
+  // close open connections
+  espMqtt.disconnect();
+#endif
 }
 
 void alarmSearch() {
@@ -386,6 +403,9 @@ void bmpDataCallback(float temperature, int pressure) {
 void sendMessage(String message) {
   Serial.println(message);  
   sendMultiCast(message);
+#ifdef _MQTT_SUPPORT
+  espMqtt.publish(PROGNAME, "Alive");
+#endif
 }
 
 void sendMessage(String message, unsigned long startTime) {

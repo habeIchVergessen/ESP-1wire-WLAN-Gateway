@@ -9,7 +9,7 @@
 
 #ifdef _MQTT_SUPPORT
   #include "EspConfig.h"
-  #include <PubSubClient.h>
+  #include "EspMqtt.h"
 #endif
 
 extern "C" {
@@ -37,11 +37,6 @@ unsigned int portMulti = 12345;      // local port to listen on
 
 WiFiUDP WiFiUdp;
 ESP8266WebServer server(80);
-
-#ifdef _MQTT_SUPPORT
-  WiFiClient wifi_client;
-  PubSubClient mqtt_client(wifi_client);
-#endif
 
 void setupEspWifi() {
 //  WiFi.hostname("bla");
@@ -78,29 +73,6 @@ void setupWifi() {
   statusWifi(true);
 }
 
-IPAddress strToIP(String IP) {
-  IPAddress MyIP;
-  for (int i = 0; i < 4; i++){
-    String x = IP.substring(0, IP.indexOf("."));
-    MyIP[i] = x.toInt();
-    IP.remove(0, IP.indexOf(".")+1); 
-  }
-  return MyIP;
-}
-void startMQTT(){
-  Serial.println("connecting to MQTT-Broker: ");
-  mqtt_client.disconnect();
-  mqtt_client.setServer(strToIP(espConfig.getValue("mqttServer")), atoi(espConfig.getValue("mqttPort").c_str()));
-  if (mqtt_client.connect(WiFi.hostname().c_str())) {
-    Serial.print("MQTT connected: ");
-    Serial.print(espConfig.getValue("mqttServer"));
-    Serial.print(":");Serial.println(espConfig.getValue("mqttPort"));
-   
-    mqtt_client.publish("Topic", "Alive");
-
-  }
-}
-
 void statusWifi() {
   statusWifi(false);
 }
@@ -129,8 +101,6 @@ void statusWifi(bool reconnect) {
     Serial.println(WiFi.gatewayIP());
     // trigger KVPUDP to reload config
     sendMultiCast("REFRESH CONFIG REQUEST");
-    //connect to MQTT-Broker
-    startMQTT();   
   } else {
     Serial.println("Wifi not connected");
   }
@@ -264,11 +234,7 @@ void httpHandleConfig() {
 Serial.println("mqtt: " + server.arg("mqtt"));
     if (server.arg("mqtt") == "submit") {
       if (server.arg("action") == "test") {
-        espConfig.setValue("mqttServer", server.arg("server"));
-        espConfig.setValue("mqttPort", server.arg("port"));
-        espConfig.setValue("mqttUser", server.arg("user"));
-        espConfig.setValue("mqttPassword", server.arg("password"));
-//        configEspMqtt();
+        espMqtt.testConfig(server.arg("server"), server.arg("port"), server.arg("user"), server.arg("password"));
       } else if (server.arg("action") == "setup") {
         espConfig.saveToFile();
       } else if (server.arg("action") == "disable") {
