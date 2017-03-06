@@ -594,7 +594,7 @@ bool Esp1wire::BusIC::alarmSearch(DeviceType targetSearch) {
     if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
       break;
 
-    // prevent infinite loop
+    // prevent infinite loop (forced by an fixed bug in Busmaster::wireSearch)
     if (HelperDevice::compareAddress(address, last) == 0)
       break;
     memcpy(last, address, sizeof(address));

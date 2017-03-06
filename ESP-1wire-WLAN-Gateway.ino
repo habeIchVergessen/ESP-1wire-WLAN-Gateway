@@ -80,8 +80,8 @@ void setup() {
       if (((Esp1wire::TemperatureDevice*)device)->powerSupply())
         Serial.print(" parasite");
 
-      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
-        Serial.print(" set");
+//      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
+//        Serial.print(" set");
       int8_t alarmLow, alarmHigh;
       if (((Esp1wire::TemperatureDevice*)device)->getAlarmTemperatures(&alarmLow, &alarmHigh)) {
         Serial.print(" alarm low: " + String(alarmLow) + " high: " + String(alarmHigh));
