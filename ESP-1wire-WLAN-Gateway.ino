@@ -51,7 +51,6 @@ void setup() {
   printHeapFree();
 
   if (!esp1wire.probeI2C() && !esp1wire.probeGPIO())
-//  if (!esp1wire.probeI2C())
     Serial.println("no 1-wire detected!");
   else
     esp1wire.resetSearch();
@@ -148,8 +147,7 @@ void alarmSearch() {
     Esp1wire::Device *device = alarmFilter.getNextDevice();
 
     // switch
-    unsigned long tempStart;
-    tempStart = micros();
+    unsigned long tempStart = micros();
     Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch && ((Esp1wire::SwitchDevice*)device)->resetAlarm(&channelStatus)) {
       String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
@@ -176,13 +174,10 @@ void readCounter() {
     Esp1wire::Device *device = deviceFilter.getNextDevice();
 
     Serial.print(device->getOneWireDeviceID() + " ");
-//      if (device->getDeviceType() == Esp1wire::DeviceTypeCounter) {
-      uint32_t c1, c2;
-      unsigned long tempStart;
-      tempStart= micros();
-      if (((Esp1wire::CounterDevice*)device)->getCounter(&c1, &c2))
-        Serial.print("counter " + String(c1) + " " + String(c2) + " " + elapTime(tempStart));
-//      }
+    uint32_t c1, c2;
+    unsigned long tempStart = micros();
+    if (((Esp1wire::CounterDevice*)device)->getCounter(&c1, &c2))
+      Serial.print("counter " + String(c1) + " " + String(c2) + " " + elapTime(tempStart));
     Serial.println();
   }
 }
@@ -199,20 +194,14 @@ void readTemperatures() {
     Esp1wire::TemperatureDevice *device = deviceFilter.getNextDevice();
 
     float tempC;
-    String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
-    unsigned long tempStart;
-    tempStart = micros();
-    if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC))
+    unsigned long tempStart = micros();
+    if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC)) {
+      String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
       message += SensorDataValue(Temperature, tempC);
       message += SensorDataValue(Device, device->getName());
-//      // reset alarm (set same value for low and high; next calculation updates alarm flag)
-//      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
-//        Serial.print(" set alarm " + elapTime(tempStart));
-//      tempStart = micros();
-//        if (((Esp1wire::TemperatureDevice*)device)->requestTemperatureC(&tempC))
-//          Serial.print(" req " + (String)tempC + " " + elapTime(tempStart));
 
-    sendMessage(message, tempStart);
+      sendMessage(message, tempStart);
+    }
   }
 }
 
@@ -229,8 +218,7 @@ void readBatteries() {
 
     float voltage, current, capacity;
     Serial.print(device->getOneWireDeviceID());
-    unsigned long tempStart;
-    tempStart= micros();
+    unsigned long tempStart = micros();
     if (((Esp1wire::BatteryDevice*)device)->readBattery(&voltage, &current, &capacity))
       Serial.print(" voltage " + (String)voltage + " current " + (String)current + " capacity " + (String)capacity + " " + elapTime(tempStart));
     Serial.println();
@@ -418,23 +406,5 @@ void print_warning(byte type, String msg) {
   if (type == 3)
     Serial.print(F("failed: "));
   Serial.println(msg);
-}
-
-String uptime() {
-  String result = "";
-
-  unsigned long uptime = (millis() / 1000);
-
-  result += String((unsigned long)(uptime / 86400)) + " day(s) ";
-  uptime %= 86400;
-  uint8_t hours = uptime / 3600;
-  result += String(hours < 10 ? String("0") + hours : hours) + ":";
-  uptime %= 3600;
-  uint8_t minutes = uptime / 60;
-  result += String(minutes < 10 ? String("0") + minutes : minutes) + ".";
-  uptime %= 60;
-  result += String(uptime < 10 ? String("0") + uptime : uptime);
-
-  return result;
 }
 

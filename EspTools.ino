@@ -22,3 +22,21 @@ void blinkLed(byte cnt, byte microseconds) {
   }
 }
 
+String uptime() {
+  String result = "";
+
+  unsigned long uptime = (millis() / 1000);
+
+  result += String(uptime / 86400) + " day(s) ";
+  uptime %= 86400;
+  uint8_t hours = uptime / 3600;
+  result += String(hours < 10 ? String("0") + hours : hours) + ":";
+  uptime %= 3600;
+  uint8_t minutes = uptime / 60;
+  result += String(minutes < 10 ? String("0") + minutes : minutes) + ".";
+  uptime %= 60;
+  result += String(uptime < 10 ? String("0") + uptime : uptime);
+
+  return result;
+}
+
