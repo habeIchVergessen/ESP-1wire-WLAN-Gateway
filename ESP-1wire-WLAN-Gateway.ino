@@ -5,6 +5,8 @@
 #include "DS2482.h"
 
 #include "ESP8266WiFi.h"
+#include "MQTT.h"
+
 
 // KeyValueProtocol with full format keys
 //#define KVP_LONG_KEY_FORMAT 1
@@ -32,6 +34,7 @@ bool httpRequestProcessed     = false;
 Esp1wire esp1wire;
 
 #define _MQTT_SUPPORT
+MQTT_Client mqtt;
 
 // global config object
 EspConfig espConfig(PROGNAME);
@@ -111,6 +114,7 @@ void loop() {
   if ((lastAlarm + 5000) < millis()) {
     alarmSearch();
     lastAlarm = millis();
+    mqtt.mqtt_client.publish("Loop", "Value"); 
   }
   
   // read counter

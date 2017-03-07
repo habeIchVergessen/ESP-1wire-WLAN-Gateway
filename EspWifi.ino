@@ -7,10 +7,6 @@
 #include "FS.h"
 #include "detail/RequestHandlersImpl.h"
 
-#ifdef _MQTT_SUPPORT
-  #include "EspConfig.h"
-  #include <PubSubClient.h>
-#endif
 
 extern "C" {
 #include "user_interface.h"
@@ -38,10 +34,7 @@ unsigned int portMulti = 12345;      // local port to listen on
 WiFiUDP WiFiUdp;
 ESP8266WebServer server(80);
 
-#ifdef _MQTT_SUPPORT
-  WiFiClient wifi_client;
-  PubSubClient mqtt_client(wifi_client);
-#endif
+
 
 void setupEspWifi() {
 //  WiFi.hostname("bla");
@@ -78,29 +71,6 @@ void setupWifi() {
   statusWifi(true);
 }
 
-IPAddress strToIP(String IP) {
-  IPAddress MyIP;
-  for (int i = 0; i < 4; i++){
-    String x = IP.substring(0, IP.indexOf("."));
-    MyIP[i] = x.toInt();
-    IP.remove(0, IP.indexOf(".")+1); 
-  }
-  return MyIP;
-}
-void startMQTT(){
-  Serial.println("connecting to MQTT-Broker: ");
-  mqtt_client.disconnect();
-  mqtt_client.setServer(strToIP(espConfig.getValue("mqttServer")), atoi(espConfig.getValue("mqttPort").c_str()));
-  if (mqtt_client.connect(WiFi.hostname().c_str())) {
-    Serial.print("MQTT connected: ");
-    Serial.print(espConfig.getValue("mqttServer"));
-    Serial.print(":");Serial.println(espConfig.getValue("mqttPort"));
-   
-    mqtt_client.publish("Topic", "Alive");
-
-  }
-}
-
 void statusWifi() {
   statusWifi(false);
 }
@@ -130,7 +100,8 @@ void statusWifi(bool reconnect) {
     // trigger KVPUDP to reload config
     sendMultiCast("REFRESH CONFIG REQUEST");
     //connect to MQTT-Broker
-    startMQTT();   
+    mqtt.startMQTT();  
+    mqtt.mqtt_client.publish("Topic", "Alive"); 
   } else {
     Serial.println("Wifi not connected");
   }
