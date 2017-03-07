@@ -34,6 +34,7 @@ Esp1wire esp1wire;
 #define _MQTT_SUPPORT
 
 #ifdef _MQTT_SUPPORT
+  #define _DEBUG_MQTT
   #include "WiFiClient.h"
   #include "PubSubClient.h"
   #include "EspMqtt.h"
@@ -41,7 +42,7 @@ Esp1wire esp1wire;
   EspMqtt espMqtt(PROGNAME);
 #endif
 
-#define PFANNEX
+//#define PFANNEX
 
 // global config object
 EspConfig espConfig(PROGNAME);
@@ -56,10 +57,6 @@ void setup() {
    
   setupEspTools();
   setupEspWifi();
-
-#ifdef _MQTT_SUPPORT
-  espMqtt.connect();
-#endif
 
   printHeapFree();
 
@@ -124,6 +121,10 @@ void setup() {
 }
 
 void loop() {
+#ifdef _MQTT_SUPPORT
+  loopEspMqtt();
+#endif
+
   // read alarm
   if ((lastAlarm + 5000) < millis()) {
     alarmSearch();
@@ -220,20 +221,15 @@ void readTemperatures() {
     Esp1wire::TemperatureDevice *device = deviceFilter.getNextDevice();
 
     float tempC;
-    String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
-    unsigned long tempStart;
-    tempStart = micros();
-    if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC))
+    if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC)) {
+      unsigned long tempStart = micros();
+      String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
+      
       message += SensorDataValue(Temperature, tempC);
       message += SensorDataValue(Device, device->getName());
-//      // reset alarm (set same value for low and high; next calculation updates alarm flag)
-//      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
-//        Serial.print(" set alarm " + elapTime(tempStart));
-//      tempStart = micros();
-//        if (((Esp1wire::TemperatureDevice*)device)->requestTemperatureC(&tempC))
-//          Serial.print(" req " + (String)tempC + " " + elapTime(tempStart));
 
-    sendMessage(message, tempStart);
+      sendMessage(message, tempStart);
+    }
   }
 }
 
@@ -297,6 +293,11 @@ String getDictionary() {
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
   switch (r) {
+#ifdef _MQTT_SUPPORT
+    case 'm':
+      espMqtt.publish(PROGNAME, "uptime: " + uptime(), false);
+      break;
+#endif
 //    case 'p':
 //      esp1wire.probeI2C();
 //      esp1wire.probeGPIO();
@@ -409,7 +410,7 @@ void sendMessage(String message) {
   Serial.println(message);  
   sendMultiCast(message);
 #ifdef _MQTT_SUPPORT
-  espMqtt.publish(PROGNAME, "Alive");
+  espMqtt.publish(PROGNAME, message);
 #endif
 }
 
@@ -442,23 +443,5 @@ void print_warning(byte type, String msg) {
   if (type == 3)
     Serial.print(F("failed: "));
   Serial.println(msg);
-}
-
-String uptime() {
-  String result = "";
-
-  unsigned long uptime = (millis() / 1000);
-
-  result += String((unsigned long)(uptime / 86400)) + " day(s) ";
-  uptime %= 86400;
-  uint8_t hours = uptime / 3600;
-  result += String(hours < 10 ? String("0") + hours : hours) + ":";
-  uptime %= 3600;
-  uint8_t minutes = uptime / 60;
-  result += String(minutes < 10 ? String("0") + minutes : minutes) + ".";
-  uptime %= 60;
-  result += String(uptime < 10 ? String("0") + uptime : uptime);
-
-  return result;
 }
 
