@@ -19,6 +19,7 @@ bool httpRequestProcessed     = false;
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
 //#define _DEBUG_TEST_DATA
+#define _DEBUG_DEVICE_DS2438
 
 // EspWifi
 //#define _ESP_WIFI_UDP_MULTICAST_DISABLED
