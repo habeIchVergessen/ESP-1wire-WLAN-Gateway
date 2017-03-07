@@ -18,7 +18,8 @@ bool httpRequestProcessed     = false;
 #define _DEBUG_TIMING
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
-#define _DEBUG_TEST_DATA
+//#define _DEBUG_TEST_DATA
+#define _DEBUG_DEVICE_DS2438
 
 // EspWifi
 //#define _ESP_WIFI_UDP_MULTICAST_DISABLED
@@ -170,8 +171,7 @@ void alarmSearch() {
     Esp1wire::Device *device = alarmFilter.getNextDevice();
 
     // switch
-    unsigned long tempStart;
-    tempStart = micros();
+    unsigned long tempStart = micros();
     Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch && ((Esp1wire::SwitchDevice*)device)->resetAlarm(&channelStatus)) {
       String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
@@ -198,13 +198,10 @@ void readCounter() {
     Esp1wire::Device *device = deviceFilter.getNextDevice();
 
     Serial.print(device->getOneWireDeviceID() + " ");
-//      if (device->getDeviceType() == Esp1wire::DeviceTypeCounter) {
-      uint32_t c1, c2;
-      unsigned long tempStart;
-      tempStart= micros();
-      if (((Esp1wire::CounterDevice*)device)->getCounter(&c1, &c2))
-        Serial.print("counter " + String(c1) + " " + String(c2) + " " + elapTime(tempStart));
-//      }
+    uint32_t c1, c2;
+    unsigned long tempStart = micros();
+    if (((Esp1wire::CounterDevice*)device)->getCounter(&c1, &c2))
+      Serial.print("counter " + String(c1) + " " + String(c2) + " " + elapTime(tempStart));
     Serial.println();
   }
 }
@@ -221,10 +218,10 @@ void readTemperatures() {
     Esp1wire::TemperatureDevice *device = deviceFilter.getNextDevice();
 
     float tempC;
+    unsigned long tempStart = micros();
     if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC)) {
-      unsigned long tempStart = micros();
       String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
-      
+
       message += SensorDataValue(Temperature, tempC);
       message += SensorDataValue(Device, device->getName());
 
@@ -246,8 +243,7 @@ void readBatteries() {
 
     float voltage, current, capacity;
     Serial.print(device->getOneWireDeviceID());
-    unsigned long tempStart;
-    tempStart= micros();
+    unsigned long tempStart = micros();
     if (((Esp1wire::BatteryDevice*)device)->readBattery(&voltage, &current, &capacity))
       Serial.print(" voltage " + (String)voltage + " current " + (String)current + " capacity " + (String)capacity + " " + elapTime(tempStart));
     Serial.println();

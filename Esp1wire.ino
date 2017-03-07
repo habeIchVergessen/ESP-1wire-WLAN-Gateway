@@ -1480,6 +1480,12 @@ bool Esp1wire::HelperBatteryDevice::readScratch(Bus *bus, byte *address, uint8_t
   bus->wireReadBytes(crc, 1);   // read crc
   bool result = bus->reset();
 
+#ifdef _DEBUG_DEVICE_DS2438
+  Serial.print("HelperBatteryDevice::readScratch: page " + String(page) + ", data: ");
+  for (int i=0; i<sizeof(data); i++)
+    Serial.print(String(data[i] < 16 ? "0" : "") + String(data[i], HEX) + String(i>0 ? "-" : ""));
+  Serial.print("crc " + String(bus->crc8(data, sizeof(data)), HEX) + " " + String(crc[0], HEX));
+#endif
   return (bus->crc8(data, sizeof(data)) == crc[0]);
 }
         
