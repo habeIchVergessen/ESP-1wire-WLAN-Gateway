@@ -40,7 +40,7 @@ bool EspMqtt::connect() {
 }
 
 bool EspMqtt::connect(String server, String port, String user, String password, bool reconnect) {
-  if (server == "" || port == "")
+  if (server == "" || port == "" || mLastConnectAttempFailed)
     return false;
 
   if (!reconnect && isConnected())
@@ -53,34 +53,39 @@ bool EspMqtt::connect(String server, String port, String user, String password, 
   Serial.print("connecting to MQTT-Broker: ");
   unsigned long connStart = micros();
 #endif
+
   bool conn = false;
   mqttClient.setServer(parseIP(server), atoi(port.c_str()));
-  if ((conn = mqttClient.connect(mMqttClientName.c_str()))) {
-#ifndef _DEBUG_MQTT
+  if (!(conn = mqttClient.connect(mMqttClientName.c_str()))) {
+    mLastConnectAttempFailed = true;
   }
-#else
-    Serial.println("connected " + elapTime(connStart));
-  } else
-    Serial.println("failed " + elapTime(connStart));
+
+#ifdef _DEBUG_MQTT
+  Serial.println(String(conn ? "connected " : "failed") + elapTime(connStart));
 #endif
 
   return conn;
 }
 
 void EspMqtt::disconnect() {
+  mLastConnectAttempFailed = false;
   mqttClient.disconnect();
 }
 
-bool EspMqtt::publish(String topic, String state, bool keepConnection) {
+bool EspMqtt::publish(String deviceName, String attributeName, String attributeValue, bool keepConnection) {
+  return publish(deviceName + "/" + attributeName, attributeValue, keepConnection);
+}
+
+bool EspMqtt::publish(String topic, String value, bool keepConnection) {
   if (!isConnected() && !connect())
     return false;
 
 #if defined(_DEBUG_MQTT) || defined(_DEBUG_TIMING)
-  Serial.print("EspMqtt::publish: topic = '" + topic + "' state '" + state + "'");
+  Serial.print("EspMqtt::publish: topic = '" + topic + "' value '" + value + "'");
   unsigned long pubStart = micros();
 #endif
-    
-  mqttClient.publish(topic.c_str(), state.c_str());
+
+  mqttClient.publish(String("/" + mMqttClientName + "/" + topic).c_str(), value.c_str());
 
 #if defined(_DEBUG_MQTT) || defined(_DEBUG_TIMING)
   Serial.println(" " + elapTime(pubStart));

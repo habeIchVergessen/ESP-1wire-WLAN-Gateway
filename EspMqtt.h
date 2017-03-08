@@ -20,9 +20,11 @@ public:
   bool          isConnected();
   bool          connect();
   void          disconnect();
-  bool          publish(String topic, String state, bool keepConnection=true);
+  bool          publish(String topic, String value, bool keepConnection=true);
+  bool          publish(String deviceName, String attributeName, String attributeValue, bool keepConnection=true);
 
 protected:
+  bool          mLastConnectAttempFailed = false;
   String        mMqttClientName;
   WiFiClient    wifiClient;
   PubSubClient  mqttClient;
