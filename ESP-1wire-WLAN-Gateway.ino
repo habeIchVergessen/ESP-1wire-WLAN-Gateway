@@ -233,7 +233,7 @@ void readBatteries() {
     float voltage, current, capacity, temperature;
     unsigned long tempStart = micros();
     if (device->readBattery(&voltage, &current, &capacity))
-      Serial.print(" voltage " + (String)voltage + " current " + (String)current + " capacity " + (String)capacity + " " + elapTime(tempStart));
+      Serial.print(" voltage " + String(voltage, 3) + " current " + String(current, 3) + " capacity " + String(capacity, 3) + " " + elapTime(tempStart));
     Serial.println();
   }
 }
