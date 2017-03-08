@@ -2,6 +2,7 @@
 
 #include "EspConfig.h"
 
+// class EspConfig
 EspConfig::EspConfig(String appName) {
   mAppName = appName;
   SPIFFS.begin();
@@ -28,11 +29,11 @@ EspConfig::~EspConfig() {
 }
 
 bool EspConfig::openRead() {
-  return (configFile = configFile = SPIFFS.open(fileName().c_str(), "r"));
+  return (configFile = SPIFFS.open(fileName().c_str(), "r"));
 }
 
 bool EspConfig::openWrite() {
-  return (configFile = configFile = SPIFFS.open(fileName().c_str(), "w"));
+  return (configFile = SPIFFS.open(fileName().c_str(), "w"));
 }
 
 String EspConfig::getValue(String name) {
@@ -95,6 +96,8 @@ void EspConfig::unsetValue(String name) {
       last = curr;
     curr = curr->next;
   }
+
+  configChanged = true;
 }
 
 void EspConfig::unsetAll() {
@@ -104,6 +107,8 @@ void EspConfig::unsetAll() {
     delete (curr);
     curr = first;
   }
+
+  configChanged = true;
 }
 
 bool EspConfig::saveToFile() {
@@ -124,8 +129,17 @@ bool EspConfig::saveToFile() {
     configFile.close();
     configChanged = false;
     result = true;
-  }
+  } else
+    Serial.println("saveToFile: " + fileName() + " failed!");
 
   return result;
+}
+
+EspDeviceConfig EspConfig::getDeviceConfig(String deviceName) {
+  return EspDeviceConfig(deviceName);
+}
+
+// class EspDeviceConfig
+EspDeviceConfig::EspDeviceConfig(String deviceName) : EspConfig(deviceName) {
 }
 

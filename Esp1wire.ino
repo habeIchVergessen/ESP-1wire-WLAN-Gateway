@@ -975,7 +975,7 @@ bool Esp1wire::TemperatureDevice::requestTemperatureC(float *temperature) {
 
   bool result;
 
-  if ((result = HelperTemperatureDevice::requestTemperatures(mBus, mAddress)))
+  if ((result = HelperTemperatureDevice::requestTemperature(mBus, mAddress)))
     result = readTemperatureC(temperature);
 
   return result;
@@ -1103,7 +1103,7 @@ bool Esp1wire::HelperTemperatureDevice::requestTemperatures(Bus *bus) {
   return true;
 }
 
-bool Esp1wire::HelperTemperatureDevice::requestTemperatures(Bus *bus, uint8_t *address) {
+bool Esp1wire::HelperTemperatureDevice::requestTemperature(Bus *bus, uint8_t *address) {
   if (!bus->reset())
     return false;
   bus->wireSelect(address);
@@ -1381,7 +1381,7 @@ bool Esp1wire::HelperBatteryDevice::readTemperatureC(Bus *bus, byte *address, fl
 }
 
 bool Esp1wire::HelperBatteryDevice::requestTemperatureC(Bus *bus, byte *address, float *temperature) {
-  bool result = HelperTemperatureDevice::requestTemperatures(bus, address);
+  bool result = HelperTemperatureDevice::requestTemperature(bus, address);
 
   if (result)
     result = readTemperatureC(bus, address, temperature);
@@ -1466,7 +1466,10 @@ bool Esp1wire::HelperBatteryDevice::requestBattery(Bus *bus, byte *address, floa
 }
 
 bool Esp1wire::HelperBatteryDevice::readScratch(Bus *bus, byte *address, uint8_t page, uint8_t data[8]) {
-  uint8_t cmd[2] = {
+  uint8_t recall[2] = {
+    owbcRecallMemory
+  , page
+  },  cmd[2] = {
     owbcReadScratch
   , page
   }, crc[1];
@@ -1474,6 +1477,9 @@ bool Esp1wire::HelperBatteryDevice::readScratch(Bus *bus, byte *address, uint8_t
   if (!bus->reset())
     return false;
 
+  bus->wireSelect(address);
+  bus->wireWriteBytes(recall, 2);
+  bus->reset();
   bus->wireSelect(address);
   bus->wireWriteBytes(cmd, 2);
   bus->wireReadBytes(data, 8);

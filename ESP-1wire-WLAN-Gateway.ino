@@ -19,7 +19,7 @@ bool httpRequestProcessed     = false;
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
 //#define _DEBUG_TEST_DATA
-#define _DEBUG_DEVICE_DS2438
+//#define _DEBUG_DEVICE_DS2438
 
 // EspWifi
 //#define _ESP_WIFI_UDP_MULTICAST_DISABLED
@@ -104,6 +104,19 @@ void setup() {
     }
     // switch devices
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
+//      EspDeviceConfig devConf = espConfig.getDeviceConfig(device->getOneWireDeviceID());
+//      Serial.println(" config switch: '" + devConf.getValue("test") + "'");
+//      if (devConf.getValue("test") != "") {
+//        devConf.unsetAll();
+//        devConf.saveToFile();
+//
+//        Dir dir = SPIFFS.openDir("/config");
+//        while (dir.next()) {
+//            Serial.print(" " + dir.fileName());
+////            File f = dir.openFile("r");
+////            Serial.println(f.size());
+//        }
+//      }
       ((Esp1wire::SwitchDevice*)device)->setConditionalSearch(
           Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh
         , Esp1wire::SwitchDevice::SourceSelectActivityLatch
@@ -234,7 +247,7 @@ void readBatteries() {
   printHeapFree();
 
   // calculate temperatures
-//  esp1wire.requestBatteries();
+  esp1wire.requestBatteries();
 
   // read
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeBattery);
@@ -244,12 +257,8 @@ void readBatteries() {
     Serial.print(device->getOneWireDeviceID());
     float voltage, current, capacity, temperature;
     unsigned long tempStart = micros();
-    if (device->requestBattery(&voltage, &current, &capacity))
-      Serial.print(" voltage " + (String)voltage + " current " + (String)current + " capacity " + (String)capacity + " " + elapTime(tempStart));
-
-    tempStart = micros();
-    if (device->requestTemperatureC(&temperature))
-      Serial.print(" temperature " + (String)temperature + " " + elapTime(tempStart));
+    if (device->readBattery(&voltage, &current, &capacity))
+      Serial.print(" voltage " + String(voltage, 3) + " current " + String(current, 3) + " capacity " + String(capacity, 3) + " " + elapTime(tempStart));
     Serial.println();
   }
 }
