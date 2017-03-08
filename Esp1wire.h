@@ -266,6 +266,7 @@ class Esp1wire {
           owbcStartConversionT  = (byte)0x44  // Tells device to take a temperature reading and put it on the scratchpad
         , owbcStartConversionV  = (byte)0xB4  // Tells device to take a voltage reading and put it on the scratchpad
         , owbcReadScratch       = (byte)0xBE  // Read EEPROM
+        , owbcRecallMemory      = (byte)0xB8  // load to scratch
         };
 
         uint8_t     mAddress[8];
@@ -533,7 +534,7 @@ class Esp1wire {
     {
       public:
         static bool requestTemperatures(Bus *bus);
-        static bool requestTemperatures(Bus *bus, byte *address);
+        static bool requestTemperature(Bus *bus, byte *address);
         static bool isConversionComplete(Bus *bus);
         static bool readScratch(Bus *bus, uint8_t *address, uint8_t data[9]);
         static bool writeScratch(Bus *bus, uint8_t *address, uint8_t data[9]);

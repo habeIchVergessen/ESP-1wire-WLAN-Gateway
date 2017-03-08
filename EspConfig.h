@@ -5,6 +5,8 @@
 
 #include "FS.h"
 
+class EspDeviceConfig;
+
 class EspConfig {
 public:
   EspConfig(String appName);
@@ -15,7 +17,9 @@ public:
   void    unsetValue(String name);
   void    unsetAll();
   bool    saveToFile();
-
+  
+  EspDeviceConfig   getDeviceConfig(String deviceName);
+  
 protected:
   typedef struct __attribute__((packed)) ConfigList
   {
@@ -23,15 +27,20 @@ protected:
     ConfigList  *next;
   };
 
-  bool        configChanged = false;
-  String      mAppName;
-  ConfigList  *first = NULL;
+  bool          configChanged = false;
+  ConfigList    *first = NULL;
+  String        mAppName;
 
   File configFile;
 
   String fileName() { return "/config/" + mAppName + ".cfg"; };
   bool openRead();
   bool openWrite();
+};
+
+class EspDeviceConfig : public EspConfig {
+public:
+  EspDeviceConfig(String deviceName);
 };
 
 extern EspConfig espConfig;

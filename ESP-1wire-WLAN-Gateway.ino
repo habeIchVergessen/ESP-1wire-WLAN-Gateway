@@ -89,6 +89,19 @@ void setup() {
     }
     // switch devices
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
+//      EspDeviceConfig devConf = espConfig.getDeviceConfig(device->getOneWireDeviceID());
+//      Serial.println(" config switch: '" + devConf.getValue("test") + "'");
+//      if (devConf.getValue("test") != "") {
+//        devConf.unsetAll();
+//        devConf.saveToFile();
+//
+//        Dir dir = SPIFFS.openDir("/config");
+//        while (dir.next()) {
+//            Serial.print(" " + dir.fileName());
+////            File f = dir.openFile("r");
+////            Serial.println(f.size());
+//        }
+//      }
       ((Esp1wire::SwitchDevice*)device)->setConditionalSearch(
           Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh
         , Esp1wire::SwitchDevice::SourceSelectActivityLatch
