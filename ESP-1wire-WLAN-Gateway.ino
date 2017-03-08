@@ -234,18 +234,22 @@ void readBatteries() {
   printHeapFree();
 
   // calculate temperatures
-  esp1wire.requestBatteries();
+//  esp1wire.requestBatteries();
 
   // read
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeBattery);
   while (deviceFilter.hasNext()) {
     Esp1wire::BatteryDevice *device = (Esp1wire::BatteryDevice*)deviceFilter.getNextDevice();
 
-    float voltage, current, capacity;
     Serial.print(device->getOneWireDeviceID());
+    float voltage, current, capacity, temperature;
     unsigned long tempStart = micros();
-    if (((Esp1wire::BatteryDevice*)device)->readBattery(&voltage, &current, &capacity))
+    if (device->requestBattery(&voltage, &current, &capacity))
       Serial.print(" voltage " + (String)voltage + " current " + (String)current + " capacity " + (String)capacity + " " + elapTime(tempStart));
+
+    tempStart = micros();
+    if (device->requestTemperatureC(&temperature))
+      Serial.print(" temperature " + (String)temperature + " " + elapTime(tempStart));
     Serial.println();
   }
 }

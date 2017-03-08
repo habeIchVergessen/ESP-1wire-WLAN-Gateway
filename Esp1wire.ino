@@ -1475,18 +1475,18 @@ bool Esp1wire::HelperBatteryDevice::readScratch(Bus *bus, byte *address, uint8_t
     return false;
 
   bus->wireSelect(address);
-  bus->wireWriteBytes(cmd, sizeof(cmd));
-  bus->wireReadBytes(data, sizeof(data));
+  bus->wireWriteBytes(cmd, 2);
+  bus->wireReadBytes(data, 8);
   bus->wireReadBytes(crc, 1);   // read crc
   bool result = bus->reset();
 
 #ifdef _DEBUG_DEVICE_DS2438
   Serial.print("HelperBatteryDevice::readScratch: page " + String(page) + ", data: ");
-  for (int i=0; i<sizeof(data); i++)
-    Serial.print(String(data[i] < 16 ? "0" : "") + String(data[i], HEX) + String(i>0 ? "-" : ""));
-  Serial.print("crc " + String(bus->crc8(data, sizeof(data)), HEX) + " " + String(crc[0], HEX));
+  for (int i=0; i<8; i++)
+    Serial.print(String(data[i] < 16 ? "0" : "") + String(data[i], HEX) + String(i<7 ? "-" : ""));
+  Serial.print("crc " + String(bus->crc8(data, 8), HEX) + " " + String(crc[0], HEX));
 #endif
-  return (bus->crc8(data, sizeof(data)) == crc[0]);
+  return (bus->crc8(data, 8) == crc[0]);
 }
         
 // class DeviceFilter
