@@ -19,7 +19,7 @@ bool httpRequestProcessed     = false;
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
 //#define _DEBUG_TEST_DATA
-#define _DEBUG_DEVICE_DS2438
+//#define _DEBUG_DEVICE_DS2438
 
 // EspWifi
 //#define _ESP_WIFI_UDP_MULTICAST_DISABLED
@@ -222,7 +222,7 @@ void readBatteries() {
   printHeapFree();
 
   // calculate temperatures
-//  esp1wire.requestBatteries();
+  esp1wire.requestBatteries();
 
   // read
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeBattery);
@@ -232,12 +232,8 @@ void readBatteries() {
     Serial.print(device->getOneWireDeviceID());
     float voltage, current, capacity, temperature;
     unsigned long tempStart = micros();
-    if (device->requestBattery(&voltage, &current, &capacity))
+    if (device->readBattery(&voltage, &current, &capacity))
       Serial.print(" voltage " + (String)voltage + " current " + (String)current + " capacity " + (String)capacity + " " + elapTime(tempStart));
-
-    tempStart = micros();
-    if (device->requestTemperatureC(&temperature))
-      Serial.print(" temperature " + (String)temperature + " " + elapTime(tempStart));
     Serial.println();
   }
 }
