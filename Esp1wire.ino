@@ -175,27 +175,6 @@ bool Esp1wire::requestTemperatures (bool resetIgnoreAlarmFlags) {
   }
 }
 
-bool Esp1wire::requestBatteries() {
-  BusList *curr = firstBus;
-
-  uint8_t bus = 1;
-  while (curr != NULL) {
-    if (curr->bus->getTemperatureDeviceCount() > 0) {
-#if defined(_DEBUG_TIMING) || defined(_DEBUG)
-      Serial.print("\nbus #" + (String)bus + ": request batteries ");
-      unsigned long start = micros();
-#endif
-      HelperBatteryDevice::requestBatteries(curr->bus);
-#if defined(_DEBUG_TIMING) || defined(_DEBUG)
-      Serial.println(" " + elapTime(start));
-#endif
-    }
-
-    curr = curr->next;
-    bus++;
-  }
-}
-
 void Esp1wire::addAlarmFilter(Device *device) {
   if (device->getIgnoreAlarmSearch())
     return;
@@ -1074,11 +1053,20 @@ bool Esp1wire::BatteryDevice::readBattery(float *voltage, float *current, float 
   return HelperBatteryDevice::readBattery(mBus, mAddress, voltage, current, capacity, resistorSens);
 }
 
-bool Esp1wire::BatteryDevice::requestBattery(float *voltage, float *current, float *capacity, float resistorSens) {
+bool Esp1wire::BatteryDevice::requestBattery(InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens) {
   if (mDeviceType != DeviceTypeBattery)
     return false;
 
-  return HelperBatteryDevice::requestBattery(mBus, mAddress, voltage, current, capacity, resistorSens);
+#ifdef _DEBUG_TIMING
+  unsigned long battStart = micros();
+#endif
+  bool result = HelperBatteryDevice::requestBattery(mBus, mAddress, inputSelect, voltage, current, capacity, resistorSens);
+
+#ifdef _DEBUG_TIMING
+  Serial.println("BatteryDevice::requestBattery: " + elapTime(battStart));
+#endif
+
+  return result;
 }
 
 // class HelperTemperatureDevice
@@ -1444,11 +1432,25 @@ bool Esp1wire::HelperBatteryDevice::requestBatteries(Bus *bus) {
   return true;
 }
 
-bool Esp1wire::HelperBatteryDevice::requestBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens) {
+bool Esp1wire::HelperBatteryDevice::requestBattery(Bus *bus, byte *address, InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens) {
+  uint8_t cmd[3] = {
+    owbcWriteScratch
+  , 0x00                // page
+  , 0x07                // TODO: default config IAD | CA | EE
+  };
+  
+  if (inputSelect == InputSelectVDD)
+    cmd[2] |= inputSelect;
+
   if (!bus->reset())
     return false;
-  bus->wireSelect(address);
 
+  // select input (VDD/VAD)
+  bus->wireSelect(address);
+  bus->wireWriteBytes(cmd, sizeof(cmd));
+  bus->reset();
+  
+  bus->wireSelect(address);
   // enable parasite
   if (bus->parasite())
     bus->setPowerSupply(true);
@@ -1486,12 +1488,6 @@ bool Esp1wire::HelperBatteryDevice::readScratch(Bus *bus, byte *address, uint8_t
   bus->wireReadBytes(crc, 1);   // read crc
   bool result = bus->reset();
 
-#ifdef _DEBUG_DEVICE_DS2438
-  Serial.print("HelperBatteryDevice::readScratch: page " + String(page) + ", data: ");
-  for (int i=0; i<8; i++)
-    Serial.print(String(data[i] < 16 ? "0" : "") + String(data[i], HEX) + String(i<7 ? "-" : ""));
-  Serial.print("crc " + String(bus->crc8(data, 8), HEX) + " " + String(crc[0], HEX));
-#endif
   return (bus->crc8(data, 8) == crc[0]);
 }
         

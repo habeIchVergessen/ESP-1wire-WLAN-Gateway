@@ -61,7 +61,6 @@ class Esp1wire {
     bool          resetSearch();
     AlarmFilter   alarmSearch(DeviceType targetSearch=DeviceTypeAll);
     bool          requestTemperatures(bool resetIgnoreAlarmFlags = false);
-    bool          requestBatteries();
     bool          probeI2C(uint8_t sda = SDA, uint8_t scl = SCL);
     bool          probeGPIO(uint8_t gpio = 0);
 
@@ -264,9 +263,10 @@ class Esp1wire {
 
         enum OneWireBatteryCommands {
           owbcStartConversionT  = (byte)0x44  // Tells device to take a temperature reading and put it on the scratchpad
+        , owbcWriteScratch      = (byte)0x4E  // Write EEPROM
         , owbcStartConversionV  = (byte)0xB4  // Tells device to take a voltage reading and put it on the scratchpad
-        , owbcReadScratch       = (byte)0xBE  // Read EEPROM
         , owbcRecallMemory      = (byte)0xB8  // load to scratch
+        , owbcReadScratch       = (byte)0xBE  // Read EEPROM
         };
 
         uint8_t     mAddress[8];
@@ -448,10 +448,15 @@ class Esp1wire {
     class BatteryDevice : public Device
     {
     public:
+      enum      InputSelect {
+        InputSelectVDD        = (byte)0x08
+      , InputSelectVAD        = (byte)0x00
+      };
+      
       bool                    readTemperatureC(float *temperature);
       bool                    requestTemperatureC(float *temperature);
       bool                    readBattery(float *voltage, float *current, float *capacity, float resistorSens=0.025);
-      bool                    requestBattery(float *voltage, float *current, float *capacity, float resistorSens=0.025);
+      bool                    requestBattery(InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens=0.025);
 
     protected:
       enum ScratchPadPage0Fields {
@@ -563,7 +568,7 @@ class Esp1wire {
       static bool readTemperatureC(Bus *bus, byte *address, float *temperature);
       static bool requestTemperatureC(Bus *bus, byte *address, float *temperature);
       static bool readBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens=0.025);
-      static bool requestBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens=0.025);
+      static bool requestBattery(Bus *bus, byte *address, InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens=0.025);
       static bool requestBatteries(Bus *bus);
     protected:
       static bool readScratch(Bus *bus, byte *address, uint8_t page, uint8_t data[8]);

@@ -221,9 +221,6 @@ void readTemperatures() {
 void readBatteries() {
   printHeapFree();
 
-  // calculate temperatures
-  esp1wire.requestBatteries();
-
   // read
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeBattery);
   while (deviceFilter.hasNext()) {
@@ -231,9 +228,12 @@ void readBatteries() {
 
     Serial.print(device->getOneWireDeviceID());
     float voltage, current, capacity, temperature;
-    unsigned long tempStart = micros();
-    if (device->readBattery(&voltage, &current, &capacity))
-      Serial.print(" voltage " + String(voltage, 3) + " current " + String(current, 3) + " capacity " + String(capacity, 3) + " " + elapTime(tempStart));
+    unsigned long battStart = micros();
+    if (device->requestBattery(Esp1wire::BatteryDevice::InputSelectVDD, &voltage, &current, &capacity))
+      Serial.print(" voltage vdd " + String(voltage, 3) + " current " + String(current, 3) + " capacity " + String(capacity, 3) + " " + elapTime(battStart));
+    battStart = micros();
+    if (device->requestBattery(Esp1wire::BatteryDevice::InputSelectVAD, &voltage, &current, &capacity))
+      Serial.print(" voltage vad " + String(voltage, 3) + " current " + String(current, 3) + " capacity " + String(capacity, 3) + " " + elapTime(battStart));
     Serial.println();
   }
 }
