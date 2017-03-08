@@ -7,6 +7,10 @@
 #include "FS.h"
 #include "detail/RequestHandlersImpl.h"
 
+#ifdef _MQTT_SUPPORT
+  #include "EspConfig.h"
+  #include "EspMqtt.h"
+#endif
 
 extern "C" {
 #include "user_interface.h"
@@ -33,8 +37,6 @@ unsigned int portMulti = 12345;      // local port to listen on
 
 WiFiUDP WiFiUdp;
 ESP8266WebServer server(80);
-
-
 
 void setupEspWifi() {
 //  WiFi.hostname("bla");
@@ -99,9 +101,6 @@ void statusWifi(bool reconnect) {
     Serial.println(WiFi.gatewayIP());
     // trigger KVPUDP to reload config
     sendMultiCast("REFRESH CONFIG REQUEST");
-    //connect to MQTT-Broker
-    mqtt.startMQTT();  
-    mqtt.mqtt_client.publish("Topic", "Alive"); 
   } else {
     Serial.println("Wifi not connected");
   }
@@ -235,11 +234,7 @@ void httpHandleConfig() {
 Serial.println("mqtt: " + server.arg("mqtt"));
     if (server.arg("mqtt") == "submit") {
       if (server.arg("action") == "test") {
-        espConfig.setValue("mqttServer", server.arg("server"));
-        espConfig.setValue("mqttPort", server.arg("port"));
-        espConfig.setValue("mqttUser", server.arg("user"));
-        espConfig.setValue("mqttPassword", server.arg("password"));
-//        configEspMqtt();
+        espMqtt.testConfig(server.arg("server"), server.arg("port"), server.arg("user"), server.arg("password"));
       } else if (server.arg("action") == "setup") {
         espConfig.saveToFile();
       } else if (server.arg("action") == "disable") {
