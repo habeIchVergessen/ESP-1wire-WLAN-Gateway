@@ -80,34 +80,15 @@ void setup() {
       if (((Esp1wire::TemperatureDevice*)device)->powerSupply())
         Serial.print(" parasite");
 
-//      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
-//        Serial.print(" set");
       int8_t alarmLow, alarmHigh;
       if (((Esp1wire::TemperatureDevice*)device)->getAlarmTemperatures(&alarmLow, &alarmHigh)) {
         Serial.print(" alarm low: " + String(alarmLow) + " high: " + String(alarmHigh));
       }
+      ((Esp1wire::TemperatureDevice*)device)->readConfig();
     }
     // switch devices
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
-//      EspDeviceConfig devConf = espConfig.getDeviceConfig(device->getOneWireDeviceID());
-//      Serial.println(" config switch: '" + devConf.getValue("test") + "'");
-//      if (devConf.getValue("test") != "") {
-//        devConf.unsetAll();
-//        devConf.saveToFile();
-//
-//        Dir dir = SPIFFS.openDir("/config");
-//        while (dir.next()) {
-//            Serial.print(" " + dir.fileName());
-////            File f = dir.openFile("r");
-////            Serial.println(f.size());
-//        }
-//      }
-      ((Esp1wire::SwitchDevice*)device)->setConditionalSearch(
-          Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh
-        , Esp1wire::SwitchDevice::SourceSelectActivityLatch
-        , Esp1wire::SwitchDevice::ChannelSelectBoth
-        , Esp1wire::SwitchDevice::ChannelFlipFlopBoth
-      );
+      ((Esp1wire::SwitchDevice*)device)->readConfig();
     }
     Serial.println();
   }

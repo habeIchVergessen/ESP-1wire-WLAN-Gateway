@@ -12,6 +12,8 @@
 #include "Wire.h"
 #include "OneWire.h"
 
+#include "EspConfig.h"
+
 #include "DS2482.h"
 class Esp1wire {
   private:
@@ -298,6 +300,8 @@ class Esp1wire {
         bool                    powerSupply() { return parasite(); };
         TemperatureResolution   readResolution();
 
+        void  readConfig();
+
       protected:
         // Scratchpad locations
         enum ScratchPadFields {
@@ -325,17 +329,17 @@ class Esp1wire {
       , ConditionalSearchPolarityHigh = (byte)0x01
       };
       
+      enum ConditionalSearchSourceSelect {
+        SourceSelectActivityLatch   = (byte)0x02
+      , SourceSelectChannelFlipFlop = (byte)0x04
+      , SourceSelectPIOStatus       = (byte)0x06
+      };
+
       enum ConditionalSearchChannelSelect {
         ChannelSelectDisabled = (byte)0x00
       , ChannelSelectA        = (byte)0x08
       , ChannelSelectB        = (byte)0x10
       , ChannelSelectBoth     = (byte)0x18
-      };
-
-      enum ConditionalSearchSourceSelect {
-        SourceSelectActivityLatch   = (byte)0x02
-      , SourceSelectChannelFlipFlop = (byte)0x04
-      , SourceSelectPIOStatus       = (byte)0x06
       };
 
       enum ChannelFlipFlop {
@@ -366,6 +370,8 @@ class Esp1wire {
       bool getMemoryStatus(SwitchMemoryStatus *memoryStatus);
       bool setConditionalSearch(ConditionalSearchPolarity csPolarity, ConditionalSearchSourceSelect csSourceSelect, ConditionalSearchChannelSelect csChannelSelect, ChannelFlipFlop channelFlipFlop);
       bool resetAlarm(SwitchChannelStatus *channelStatus);
+
+      void readConfig();
 
     protected:
       // Status locations
@@ -552,9 +558,9 @@ class Esp1wire {
     // HelperSwitchDevice
     class HelperSwitchDevice : public SwitchDevice {
     public:
-        static bool readStatus(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
-        static bool writeStatus(Bus *bus, uint8_t *address, uint8_t data[1]);
-        static bool channelAccessInfo(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      static bool readStatus(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
+      static bool writeStatus(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool channelAccessInfo(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
     };
 
     // HelperCounterDevice 
