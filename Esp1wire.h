@@ -448,17 +448,17 @@ class Esp1wire {
     class BatteryDevice : public Device
     {
     public:
+      bool                    readTemperatureC(float *temperature);
+      bool                    requestTemperatureC(float *temperature);
+      bool                    requestVDD(float *voltage, float *current, float *capacity, float resistorSens=0.025);
+      bool                    requestVAD(float *voltage, float *current, float *capacity, float resistorSens=0.025);
+
+    protected:
       enum      InputSelect {
         InputSelectVDD        = (byte)0x08
       , InputSelectVAD        = (byte)0x00
       };
       
-      bool                    readTemperatureC(float *temperature);
-      bool                    requestTemperatureC(float *temperature);
-      bool                    readBattery(float *voltage, float *current, float *capacity, float resistorSens=0.025);
-      bool                    requestBattery(InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens=0.025);
-
-    protected:
       enum ScratchPadPage0Fields {
         spp0fStatusConfig     = (byte)0
       , spp0fLSBT             = (byte)1
@@ -479,6 +479,8 @@ class Esp1wire {
       , spp1fLSBO             = (byte)5
       , spp1fMSBO             = (byte)6
       };
+
+      bool requestBattery(InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens=0.025);
     };
     
     // class DeviceFilter
@@ -532,6 +534,7 @@ class Esp1wire {
 
       static int8_t     compareAddress(uint8_t *addr1, uint8_t *addr2);
       static String     getOneWireDeviceID(uint8_t *address);
+      static bool       isConversionComplete(Bus *bus);
     };
     
     // class HelperTemperatureDevice
@@ -540,7 +543,6 @@ class Esp1wire {
       public:
         static bool requestTemperatures(Bus *bus);
         static bool requestTemperature(Bus *bus, byte *address);
-        static bool isConversionComplete(Bus *bus);
         static bool readScratch(Bus *bus, uint8_t *address, uint8_t data[9]);
         static bool writeScratch(Bus *bus, uint8_t *address, uint8_t data[9]);
         static TemperatureResolution resolution(uint8_t *address, uint8_t data[9]);
@@ -567,10 +569,9 @@ class Esp1wire {
     public:
       static bool readTemperatureC(Bus *bus, byte *address, float *temperature);
       static bool requestTemperatureC(Bus *bus, byte *address, float *temperature);
-      static bool readBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens=0.025);
       static bool requestBattery(Bus *bus, byte *address, InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens=0.025);
-      static bool requestBatteries(Bus *bus);
     protected:
+      static bool readBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens);
       static bool readScratch(Bus *bus, byte *address, uint8_t page, uint8_t data[8]);
     };
 

@@ -847,6 +847,15 @@ int8_t Esp1wire::HelperDevice::compareAddress(uint8_t *addr1, uint8_t *addr2) {
   return 0;
 }
 
+bool Esp1wire::HelperDevice::isConversionComplete(Bus *bus) {
+  if (bus->parasite())  // no completion in parasite mode
+    return false;
+
+  uint8_t b = bus->wireReadBit();
+
+  return (b == 1);
+}
+
 // class TemperatureDevice
 bool Esp1wire::TemperatureDevice::readScratch(uint8_t data[9]) {
   return HelperTemperatureDevice::readScratch(mBus, mAddress, data);
@@ -1046,25 +1055,19 @@ bool Esp1wire::BatteryDevice::requestTemperatureC(float *temperature) {
   return HelperBatteryDevice::requestTemperatureC(mBus, mAddress, temperature);
 }
 
-bool Esp1wire::BatteryDevice::readBattery(float *voltage, float *current, float *capacity, float resistorSens) {
-  if (mDeviceType != DeviceTypeBattery)
-    return false;
+bool Esp1wire::BatteryDevice::requestVDD(float *voltage, float *current, float *capacity, float resistorSens) {
+  return requestBattery(InputSelectVDD, voltage, current, capacity, resistorSens);
+}
 
-  return HelperBatteryDevice::readBattery(mBus, mAddress, voltage, current, capacity, resistorSens);
+bool Esp1wire::BatteryDevice::requestVAD(float *voltage, float *current, float *capacity, float resistorSens) {
+  return requestBattery(InputSelectVAD, voltage, current, capacity, resistorSens);
 }
 
 bool Esp1wire::BatteryDevice::requestBattery(InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens) {
   if (mDeviceType != DeviceTypeBattery)
     return false;
 
-#ifdef _DEBUG_TIMING
-  unsigned long battStart = micros();
-#endif
   bool result = HelperBatteryDevice::requestBattery(mBus, mAddress, inputSelect, voltage, current, capacity, resistorSens);
-
-#ifdef _DEBUG_TIMING
-  Serial.println("BatteryDevice::requestBattery: " + elapTime(battStart));
-#endif
 
   return result;
 }
@@ -1081,7 +1084,7 @@ bool Esp1wire::HelperTemperatureDevice::requestTemperatures(Bus *bus) {
 
   bus->wireWriteByte(owtcStartConversion);
   unsigned long now = millis(), delms = 750; // TODO delms depends on resolution (max yet)
-  while (!isConversionComplete(bus) && (millis() - delms < now))
+  while (!HelperDevice::isConversionComplete(bus) && (millis() - delms < now))
     ;
 
   // disable parasite
@@ -1102,7 +1105,7 @@ bool Esp1wire::HelperTemperatureDevice::requestTemperature(Bus *bus, uint8_t *ad
 
   bus->wireWriteByte(owtcStartConversion);
   unsigned long now = millis(), delms = 750; // TODO delms depends on resolution (max yet)
-  while (!isConversionComplete(bus) && (millis() - delms < now))
+  while (!HelperDevice::isConversionComplete(bus) && (millis() - delms < now))
     ;
 
   // disable parasite
@@ -1110,15 +1113,6 @@ bool Esp1wire::HelperTemperatureDevice::requestTemperature(Bus *bus, uint8_t *ad
     bus->setPowerSupply(false);
 
   return true;
-}
-
-bool Esp1wire::HelperTemperatureDevice::isConversionComplete(Bus *bus) {
-  if (bus->parasite())  // no completion in parasite mode
-    return false;
-
-  uint8_t b = bus->wireReadBit();
-
-  return (b == 1);
 }
 
 bool Esp1wire::HelperTemperatureDevice::readScratch(Bus *bus, uint8_t *address, uint8_t data[9]) {
@@ -1411,27 +1405,6 @@ bool Esp1wire::HelperBatteryDevice::readBattery(Bus *bus, byte *address, float *
   return true;
 }
 
-bool Esp1wire::HelperBatteryDevice::requestBatteries(Bus *bus) {
-  if (!bus->reset())
-    return false;
-  bus->wireWriteByte(owcSkip);
-
-  // enable parasite
-  if (bus->parasite())
-    bus->setPowerSupply(true);
-
-  bus->wireWriteByte(owbcStartConversionV);
-  unsigned long now = millis(), delms = 750; // TODO delms
-  while (!HelperTemperatureDevice::isConversionComplete(bus) && (millis() - delms < now))
-    ;
-
-  // disable parasite
-  if (bus->parasite())
-    bus->setPowerSupply(false);
-
-  return true;
-}
-
 bool Esp1wire::HelperBatteryDevice::requestBattery(Bus *bus, byte *address, InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens) {
   uint8_t cmd[3] = {
     owbcWriteScratch
@@ -1456,8 +1429,8 @@ bool Esp1wire::HelperBatteryDevice::requestBattery(Bus *bus, byte *address, Inpu
     bus->setPowerSupply(true);
 
   bus->wireWriteByte(owbcStartConversionV);
-  unsigned long now = millis(), delms = 750; // TODO delms depends on resolution (max yet)
-  while (!HelperTemperatureDevice::isConversionComplete(bus) && (millis() - delms < now))
+  unsigned long now = millis(), delms = 50; // TODO delms depends on resolution (max yet)
+  while (!HelperDevice::isConversionComplete(bus) && (millis() - delms < now))
     ;
 
   // disable parasite
