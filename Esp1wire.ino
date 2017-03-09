@@ -175,27 +175,6 @@ bool Esp1wire::requestTemperatures (bool resetIgnoreAlarmFlags) {
   }
 }
 
-bool Esp1wire::requestBatteries() {
-  BusList *curr = firstBus;
-
-  uint8_t bus = 1;
-  while (curr != NULL) {
-    if (curr->bus->getTemperatureDeviceCount() > 0) {
-#if defined(_DEBUG_TIMING) || defined(_DEBUG)
-      Serial.print("\nbus #" + (String)bus + ": request batteries ");
-      unsigned long start = micros();
-#endif
-      HelperBatteryDevice::requestBatteries(curr->bus);
-#if defined(_DEBUG_TIMING) || defined(_DEBUG)
-      Serial.println(" " + elapTime(start));
-#endif
-    }
-
-    curr = curr->next;
-    bus++;
-  }
-}
-
 void Esp1wire::addAlarmFilter(Device *device) {
   if (device->getIgnoreAlarmSearch())
     return;
@@ -868,6 +847,15 @@ int8_t Esp1wire::HelperDevice::compareAddress(uint8_t *addr1, uint8_t *addr2) {
   return 0;
 }
 
+bool Esp1wire::HelperDevice::isConversionComplete(Bus *bus) {
+  if (bus->parasite())  // no completion in parasite mode
+    return false;
+
+  uint8_t b = bus->wireReadBit();
+
+  return (b == 1);
+}
+
 // class TemperatureDevice
 bool Esp1wire::TemperatureDevice::readScratch(uint8_t data[9]) {
   return HelperTemperatureDevice::readScratch(mBus, mAddress, data);
@@ -991,6 +979,25 @@ Esp1wire::TemperatureDevice::TemperatureResolution Esp1wire::TemperatureDevice::
   return HelperTemperatureDevice::resolution(mAddress, data);
 }
 
+void Esp1wire::TemperatureDevice::readConfig() {
+#ifdef _DEBUG_TIMING
+  Serial.print(" readConfig: ");
+  unsigned long rcStart = micros();
+#endif
+
+  EspDeviceConfig devConf = espConfig.getDeviceConfig(getOneWireDeviceID());
+
+  String value = devConf.getValue("conditionalSearch");
+  if (value != "") {  // min & max
+//      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
+//        Serial.print(" set");
+  }
+  
+#ifdef _DEBUG_TIMING
+  Serial.print(elapTime(rcStart));
+#endif
+}
+
 // class SwitchDevice
 bool Esp1wire::SwitchDevice::readStatus(SwitchMemoryStatus *memoryStatus) {
   if (mDeviceType != DeviceTypeSwitch)
@@ -1041,6 +1048,27 @@ bool Esp1wire::SwitchDevice::resetAlarm(SwitchChannelStatus *channelStatus) {
   return channelAccessInfo(&resetStatus, true);
 }
 
+void Esp1wire::SwitchDevice::readConfig() {
+#ifdef _DEBUG_TIMING
+  Serial.print(" readConfig: ");
+  unsigned long rcStart = micros();
+#endif
+
+  EspDeviceConfig devConf = espConfig.getDeviceConfig(getOneWireDeviceID());
+
+  String value = devConf.getValue("conditionalSearch");
+  if (value != "" && (value.toInt() & 0x7F) != 0) {
+    uint8_t conSearch[1] = { (value.toInt() & 0x7F) };
+
+    if ((conSearch[0] & SourceSelectPIOStatus) != 0)
+      HelperSwitchDevice::writeStatus(mBus, mAddress, conSearch);
+  }
+  
+#ifdef _DEBUG_TIMING
+  Serial.print(elapTime(rcStart));
+#endif
+}
+
 // class CounterDevice
 bool Esp1wire::CounterDevice::getCounter(uint32_t *counter1, uint32_t *counter2) {
   if (mDeviceType != DeviceTypeSwitch)
@@ -1067,18 +1095,21 @@ bool Esp1wire::BatteryDevice::requestTemperatureC(float *temperature) {
   return HelperBatteryDevice::requestTemperatureC(mBus, mAddress, temperature);
 }
 
-bool Esp1wire::BatteryDevice::readBattery(float *voltage, float *current, float *capacity, float resistorSens) {
-  if (mDeviceType != DeviceTypeBattery)
-    return false;
-
-  return HelperBatteryDevice::readBattery(mBus, mAddress, voltage, current, capacity, resistorSens);
+bool Esp1wire::BatteryDevice::requestVDD(float *voltage, float *current, float *capacity, float resistorSens) {
+  return requestBattery(InputSelectVDD, voltage, current, capacity, resistorSens);
 }
 
-bool Esp1wire::BatteryDevice::requestBattery(float *voltage, float *current, float *capacity, float resistorSens) {
+bool Esp1wire::BatteryDevice::requestVAD(float *voltage, float *current, float *capacity, float resistorSens) {
+  return requestBattery(InputSelectVAD, voltage, current, capacity, resistorSens);
+}
+
+bool Esp1wire::BatteryDevice::requestBattery(InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens) {
   if (mDeviceType != DeviceTypeBattery)
     return false;
 
-  return HelperBatteryDevice::requestBattery(mBus, mAddress, voltage, current, capacity, resistorSens);
+  bool result = HelperBatteryDevice::requestBattery(mBus, mAddress, inputSelect, voltage, current, capacity, resistorSens);
+
+  return result;
 }
 
 // class HelperTemperatureDevice
@@ -1093,7 +1124,7 @@ bool Esp1wire::HelperTemperatureDevice::requestTemperatures(Bus *bus) {
 
   bus->wireWriteByte(owtcStartConversion);
   unsigned long now = millis(), delms = 750; // TODO delms depends on resolution (max yet)
-  while (!isConversionComplete(bus) && (millis() - delms < now))
+  while (!HelperDevice::isConversionComplete(bus) && (millis() - delms < now))
     ;
 
   // disable parasite
@@ -1114,7 +1145,7 @@ bool Esp1wire::HelperTemperatureDevice::requestTemperature(Bus *bus, uint8_t *ad
 
   bus->wireWriteByte(owtcStartConversion);
   unsigned long now = millis(), delms = 750; // TODO delms depends on resolution (max yet)
-  while (!isConversionComplete(bus) && (millis() - delms < now))
+  while (!HelperDevice::isConversionComplete(bus) && (millis() - delms < now))
     ;
 
   // disable parasite
@@ -1122,15 +1153,6 @@ bool Esp1wire::HelperTemperatureDevice::requestTemperature(Bus *bus, uint8_t *ad
     bus->setPowerSupply(false);
 
   return true;
-}
-
-bool Esp1wire::HelperTemperatureDevice::isConversionComplete(Bus *bus) {
-  if (bus->parasite())  // no completion in parasite mode
-    return false;
-
-  uint8_t b = bus->wireReadBit();
-
-  return (b == 1);
 }
 
 bool Esp1wire::HelperTemperatureDevice::readScratch(Bus *bus, uint8_t *address, uint8_t data[9]) {
@@ -1423,39 +1445,32 @@ bool Esp1wire::HelperBatteryDevice::readBattery(Bus *bus, byte *address, float *
   return true;
 }
 
-bool Esp1wire::HelperBatteryDevice::requestBatteries(Bus *bus) {
+bool Esp1wire::HelperBatteryDevice::requestBattery(Bus *bus, byte *address, InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens) {
+  uint8_t cmd[3] = {
+    owbcWriteScratch
+  , 0x00                // page
+  , 0x07                // TODO: default config IAD | CA | EE
+  };
+  
+  if (inputSelect == InputSelectVDD)
+    cmd[2] |= inputSelect;
+
   if (!bus->reset())
     return false;
-  bus->wireWriteByte(owcSkip);
 
-  // enable parasite
-  if (bus->parasite())
-    bus->setPowerSupply(true);
-
-  bus->wireWriteByte(owbcStartConversionV);
-  unsigned long now = millis(), delms = 750; // TODO delms
-  while (!HelperTemperatureDevice::isConversionComplete(bus) && (millis() - delms < now))
-    ;
-
-  // disable parasite
-  if (bus->parasite())
-    bus->setPowerSupply(false);
-
-  return true;
-}
-
-bool Esp1wire::HelperBatteryDevice::requestBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens) {
-  if (!bus->reset())
-    return false;
+  // select input (VDD/VAD)
   bus->wireSelect(address);
-
+  bus->wireWriteBytes(cmd, sizeof(cmd));
+  bus->reset();
+  
+  bus->wireSelect(address);
   // enable parasite
   if (bus->parasite())
     bus->setPowerSupply(true);
 
   bus->wireWriteByte(owbcStartConversionV);
-  unsigned long now = millis(), delms = 750; // TODO delms depends on resolution (max yet)
-  while (!HelperTemperatureDevice::isConversionComplete(bus) && (millis() - delms < now))
+  unsigned long now = millis(), delms = 50; // TODO delms depends on resolution (max yet)
+  while (!HelperDevice::isConversionComplete(bus) && (millis() - delms < now))
     ;
 
   // disable parasite
@@ -1486,12 +1501,6 @@ bool Esp1wire::HelperBatteryDevice::readScratch(Bus *bus, byte *address, uint8_t
   bus->wireReadBytes(crc, 1);   // read crc
   bool result = bus->reset();
 
-#ifdef _DEBUG_DEVICE_DS2438
-  Serial.print("HelperBatteryDevice::readScratch: page " + String(page) + ", data: ");
-  for (int i=0; i<8; i++)
-    Serial.print(String(data[i] < 16 ? "0" : "") + String(data[i], HEX) + String(i<7 ? "-" : ""));
-  Serial.print("crc " + String(bus->crc8(data, 8), HEX) + " " + String(crc[0], HEX));
-#endif
   return (bus->crc8(data, 8) == crc[0]);
 }
         

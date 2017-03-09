@@ -12,6 +12,8 @@
 #include "Wire.h"
 #include "OneWire.h"
 
+#include "EspConfig.h"
+
 #include "DS2482.h"
 class Esp1wire {
   private:
@@ -61,7 +63,6 @@ class Esp1wire {
     bool          resetSearch();
     AlarmFilter   alarmSearch(DeviceType targetSearch=DeviceTypeAll);
     bool          requestTemperatures(bool resetIgnoreAlarmFlags = false);
-    bool          requestBatteries();
     bool          probeI2C(uint8_t sda = SDA, uint8_t scl = SCL);
     bool          probeGPIO(uint8_t gpio = 0);
 
@@ -264,9 +265,10 @@ class Esp1wire {
 
         enum OneWireBatteryCommands {
           owbcStartConversionT  = (byte)0x44  // Tells device to take a temperature reading and put it on the scratchpad
+        , owbcWriteScratch      = (byte)0x4E  // Write EEPROM
         , owbcStartConversionV  = (byte)0xB4  // Tells device to take a voltage reading and put it on the scratchpad
-        , owbcReadScratch       = (byte)0xBE  // Read EEPROM
         , owbcRecallMemory      = (byte)0xB8  // load to scratch
+        , owbcReadScratch       = (byte)0xBE  // Read EEPROM
         };
 
         uint8_t     mAddress[8];
@@ -298,6 +300,8 @@ class Esp1wire {
         bool                    powerSupply() { return parasite(); };
         TemperatureResolution   readResolution();
 
+        void  readConfig();
+
       protected:
         // Scratchpad locations
         enum ScratchPadFields {
@@ -325,17 +329,17 @@ class Esp1wire {
       , ConditionalSearchPolarityHigh = (byte)0x01
       };
       
+      enum ConditionalSearchSourceSelect {
+        SourceSelectActivityLatch   = (byte)0x02
+      , SourceSelectChannelFlipFlop = (byte)0x04
+      , SourceSelectPIOStatus       = (byte)0x06
+      };
+
       enum ConditionalSearchChannelSelect {
         ChannelSelectDisabled = (byte)0x00
       , ChannelSelectA        = (byte)0x08
       , ChannelSelectB        = (byte)0x10
       , ChannelSelectBoth     = (byte)0x18
-      };
-
-      enum ConditionalSearchSourceSelect {
-        SourceSelectActivityLatch   = (byte)0x02
-      , SourceSelectChannelFlipFlop = (byte)0x04
-      , SourceSelectPIOStatus       = (byte)0x06
       };
 
       enum ChannelFlipFlop {
@@ -366,6 +370,8 @@ class Esp1wire {
       bool getMemoryStatus(SwitchMemoryStatus *memoryStatus);
       bool setConditionalSearch(ConditionalSearchPolarity csPolarity, ConditionalSearchSourceSelect csSourceSelect, ConditionalSearchChannelSelect csChannelSelect, ChannelFlipFlop channelFlipFlop);
       bool resetAlarm(SwitchChannelStatus *channelStatus);
+
+      void readConfig();
 
     protected:
       // Status locations
@@ -450,10 +456,15 @@ class Esp1wire {
     public:
       bool                    readTemperatureC(float *temperature);
       bool                    requestTemperatureC(float *temperature);
-      bool                    readBattery(float *voltage, float *current, float *capacity, float resistorSens=0.025);
-      bool                    requestBattery(float *voltage, float *current, float *capacity, float resistorSens=0.025);
+      bool                    requestVDD(float *voltage, float *current, float *capacity, float resistorSens=0.025);
+      bool                    requestVAD(float *voltage, float *current, float *capacity, float resistorSens=0.025);
 
     protected:
+      enum      InputSelect {
+        InputSelectVDD        = (byte)0x08
+      , InputSelectVAD        = (byte)0x00
+      };
+      
       enum ScratchPadPage0Fields {
         spp0fStatusConfig     = (byte)0
       , spp0fLSBT             = (byte)1
@@ -474,6 +485,8 @@ class Esp1wire {
       , spp1fLSBO             = (byte)5
       , spp1fMSBO             = (byte)6
       };
+
+      bool requestBattery(InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens=0.025);
     };
     
     // class DeviceFilter
@@ -527,6 +540,7 @@ class Esp1wire {
 
       static int8_t     compareAddress(uint8_t *addr1, uint8_t *addr2);
       static String     getOneWireDeviceID(uint8_t *address);
+      static bool       isConversionComplete(Bus *bus);
     };
     
     // class HelperTemperatureDevice
@@ -535,7 +549,6 @@ class Esp1wire {
       public:
         static bool requestTemperatures(Bus *bus);
         static bool requestTemperature(Bus *bus, byte *address);
-        static bool isConversionComplete(Bus *bus);
         static bool readScratch(Bus *bus, uint8_t *address, uint8_t data[9]);
         static bool writeScratch(Bus *bus, uint8_t *address, uint8_t data[9]);
         static TemperatureResolution resolution(uint8_t *address, uint8_t data[9]);
@@ -545,9 +558,9 @@ class Esp1wire {
     // HelperSwitchDevice
     class HelperSwitchDevice : public SwitchDevice {
     public:
-        static bool readStatus(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
-        static bool writeStatus(Bus *bus, uint8_t *address, uint8_t data[1]);
-        static bool channelAccessInfo(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      static bool readStatus(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
+      static bool writeStatus(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool channelAccessInfo(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
     };
 
     // HelperCounterDevice 
@@ -562,10 +575,9 @@ class Esp1wire {
     public:
       static bool readTemperatureC(Bus *bus, byte *address, float *temperature);
       static bool requestTemperatureC(Bus *bus, byte *address, float *temperature);
-      static bool readBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens=0.025);
-      static bool requestBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens=0.025);
-      static bool requestBatteries(Bus *bus);
+      static bool requestBattery(Bus *bus, byte *address, InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens=0.025);
     protected:
+      static bool readBattery(Bus *bus, byte *address, float *voltage, float *current, float *capacity, float resistorSens);
       static bool readScratch(Bus *bus, byte *address, uint8_t page, uint8_t data[8]);
     };
 
