@@ -980,22 +980,17 @@ Esp1wire::TemperatureDevice::TemperatureResolution Esp1wire::TemperatureDevice::
 }
 
 void Esp1wire::TemperatureDevice::readConfig() {
-#ifdef _DEBUG_TIMING
-  Serial.print(" readConfig: ");
-  unsigned long rcStart = micros();
-#endif
-
   EspDeviceConfig devConf = espConfig.getDeviceConfig(getOneWireDeviceID());
 
-  String value = devConf.getValue("conditionalSearch");
-  if (value != "") {  // min & max
-//      if (((Esp1wire::TemperatureDevice*)device)->setAlarmTemperatures(20, 25))
-//        Serial.print(" set");
+  String value = devConf.getValue(F("conditionalSearch"));
+  int8_t idx;
+  if ((idx = value.indexOf(",")) > 0) {  // min & max
+    int8_t min = value.substring(0, idx).toInt();
+    int8_t max = value.substring(idx + 1, value.length()).toInt();
+
+    if (min != 0 && max != 0 && min <= max)
+      setAlarmTemperatures(min, max);
   }
-  
-#ifdef _DEBUG_TIMING
-  Serial.print(elapTime(rcStart));
-#endif
 }
 
 // class SwitchDevice
@@ -1049,29 +1044,20 @@ bool Esp1wire::SwitchDevice::resetAlarm(SwitchChannelStatus *channelStatus) {
 }
 
 void Esp1wire::SwitchDevice::readConfig() {
-#ifdef _DEBUG_TIMING
-  Serial.print(" readConfig: ");
-  unsigned long rcStart = micros();
-#endif
-
   EspDeviceConfig devConf = espConfig.getDeviceConfig(getOneWireDeviceID());
 
-  String value = devConf.getValue("conditionalSearch");
+  String value = devConf.getValue(F("conditionalSearch"));
   if (value != "" && (value.toInt() & 0x7F) != 0) {
     uint8_t conSearch[1] = { (value.toInt() & 0x7F) };
 
     if ((conSearch[0] & SourceSelectPIOStatus) != 0)
       HelperSwitchDevice::writeStatus(mBus, mAddress, conSearch);
   }
-  
-#ifdef _DEBUG_TIMING
-  Serial.print(elapTime(rcStart));
-#endif
 }
 
 // class CounterDevice
 bool Esp1wire::CounterDevice::getCounter(uint32_t *counter1, uint32_t *counter2) {
-  if (mDeviceType != DeviceTypeSwitch)
+  if (mDeviceType != DeviceTypeCounter)
     return false;
 
   return counter(counter1, counter2);
