@@ -6,10 +6,14 @@
 #define actionField      F(" action=")
 #define enctypeField     F(" enctype=")
 #define maxLengthField   F(" maxlength=")
+#define minField         F(" min=")
+#define maxField         F(" max=")
 #define methodField      F(" method=")
 #define nameField        F(" name=")
 #define typeField        F(" type=")
 #define valueField       F(" value=")
+#define idField          F(" id=")
+#define classField       F(" class=")
 
 String htmlBody(String html) {
   String doc = F("<html><body><style>label {width: 4em; text-align:left; display: inline-block;} input[type=text] { width: 20em; margin-bottom: 2px;} </style><center><div style=\"width: 40em;\">");
@@ -34,9 +38,9 @@ String wifiForm() {
   action += F("&wifi=submit");
 
   String html = htmlLabel("ssid", "ssid: ");
-  html += htmlInput("ssid", "",  WiFi.SSID(), sizeof(current_conf.ssid)) + htmlNewLine();
+  html += htmlInput("ssid", "",  WiFi.SSID(), sizeof(current_conf.ssid), "", "") + htmlNewLine();
   html += htmlLabel("password", "psk: ");
-  html += htmlInput("password", "",  "", sizeof(current_conf.password)) + htmlNewLine();
+  html += htmlInput("password", "",  "", sizeof(current_conf.password), "", "") + htmlNewLine();
   html += htmlButton("submit", "action", "setup", "Setup");
   html += htmlButton("submit", "action", "reset", "Reset");
 
@@ -50,13 +54,13 @@ String mqttForm() {
   action += F("&mqtt=submit");
 
   String html = htmlLabel("server", "server: ");
-  html += htmlInput("server", "", espConfig.getValue("mqttServer"), 40) + htmlNewLine();
+  html += htmlInput("server", "", espConfig.getValue("mqttServer"), 40, "", "") + htmlNewLine();
   html += htmlLabel("port", "port: ");
-  html += htmlInput("port", "", espConfig.getValue("mqttPort"), 5) + htmlNewLine();
+  html += htmlInput("port", "number", espConfig.getValue("mqttPort"), 0, "1", "65535") + htmlNewLine();
   html += htmlLabel("user", "user: ");
-  html += htmlInput("user", "", espConfig.getValue("mqttUser"), 40) + htmlNewLine();
+  html += htmlInput("user", "", espConfig.getValue("mqttUser"), 40, "", "") + htmlNewLine();
   html += htmlLabel("password", "password: ");
-  html += htmlInput("password", "", "", 40) + htmlNewLine();
+  html += htmlInput("password", "", "", 40, "", "") + htmlNewLine();
   html += htmlButton("submit", "action", "setup", "Setup");
   html += htmlButton("submit", "action", "test", "Test");
 
@@ -70,7 +74,7 @@ String flashForm() {
   action += F(".bin");
 
   String html = htmlLabel("file", "file: ");
-  html += htmlInput("file", "file", "", 0) + htmlNewLine();
+  html += htmlInput("file", "file", "", 0, "", "") + htmlNewLine();
   html += htmlButton("submit", "action", "flash", "Flash");
 
   return htmlForm(html, action, "post", "multipart/form-data", "OTA");
@@ -93,16 +97,25 @@ String htmlForm(String html, String pAction, String pMethod, String pEnctype, St
     result += textMark;
   }
   result += F(">");
-  result += F("<fieldset>");
+  result += htmlFieldSet(html, pLegend);
+  result += F("</form>");
+  
+  return result;
+}
+
+String htmlFieldSet(String pHtml, String pLegend) {
+  if (pLegend == "")
+    return pHtml;
+    
+  String result = F("<fieldset>");
   if (pLegend != "") {
     result += F("<legend>");
     result += pLegend;
     result += F("</legend>");
   }
-  result += html;
+  result += pHtml;
   result += F("</fieldset>");
-  result += F("</form>");
-  
+
   return result;
 }
 
@@ -121,7 +134,7 @@ String htmlLabel(String pFor, String pText) {
   return result;
 }
 
-String htmlInput(String pName, String pType, String pValue, int pMaxLength) {
+String htmlInput(String pName, String pType, String pValue, int pMaxLength, String pMinNumber, String pMaxNumber) {
   String result = F("<input ");
   result += nameField;
   result += textMark;
@@ -142,6 +155,18 @@ String htmlInput(String pName, String pType, String pValue, int pMaxLength) {
     result += maxLengthField;
     result += textMark;
     result += String(pMaxLength);
+    result += textMark;
+  }
+  if (pType == "number" && pMinNumber != "") {
+    result += minField;
+    result += textMark;
+    result += pMinNumber;
+    result += textMark;
+  }
+  if (pType == "number" && pMaxNumber != "") {
+    result += maxField;
+    result += textMark;
+    result += pMaxNumber;
     result += textMark;
   }
   result += F(">");
@@ -165,6 +190,58 @@ String htmlButton(String pType, String pName, String pValue, String pText) {
   result += F(">");
   result += pText;
   result += F("</button>");
+
+  return result;
+}
+
+String htmlAnker(String pId, String pClass, String pText) {
+  String result = F("<a ");
+
+  if (pId != "") {
+    result += idField;
+    result += textMark;
+    result += pId;
+    result += textMark;
+  }
+
+  if (pClass != "") {
+    result += classField;
+    result += textMark;
+    result += pClass;
+    result += textMark;
+  }
+
+  result += F(">");
+  result += pText;
+  result += F("</a>");
+  
+  return result;  
+}
+
+String htmlOption(String pValue, String pText, bool pSelected) {
+  String result = F("<option");
+  result += valueField;
+  result += textMark;
+  result += pValue;
+  result += textMark;
+  if (pSelected)
+    result += F(" selected");
+  result += F(">");
+  result += pText;
+  result += F("</option>");
+
+  return result;
+}
+
+String htmlSelect(String pName, String pOptions) {
+  String result = F("<select");
+  result += nameField;
+  result += textMark;
+  result += pName;
+  result += textMark;
+  result += F(">");
+  result += pOptions;
+  result += F("</select>");
 
   return result;
 }
