@@ -17,6 +17,7 @@ public:
   void    unsetValue(String name);
   void    unsetAll();
   bool    saveToFile();
+  bool    hasChanged() { return configChanged; };
   
   EspDeviceConfig   getDeviceConfig(String deviceName);
   

@@ -232,6 +232,7 @@ void httpHandleConfig() {
       server.client().setNoDelay(true);
       server.send(403, "text/plain", "Forbidden");
       httpRequestProcessed = true;
+      return;
     }
 
     if (server.arg("deviceID") != "") {
@@ -324,8 +325,13 @@ void httpHandleDevices() {
       Serial.print("send " + elapTime(sendStart) + " ");
 #endif
       httpRequestProcessed = true;
+      return;
     }
   }
+  
+  server.client().setNoDelay(true);
+  server.send(403, "text/plain", "Forbidden");
+  httpRequestProcessed = true;
 }
 
 void httpHandleDeviceListCss() {
@@ -340,7 +346,8 @@ void httpHandleDeviceListJss() {
   Serial.print("httpHandleDeviceListJss: ");
   server.sendHeader("Cache-Control", "public, max-age=86400");
   server.client().setNoDelay(true);
-  String script = F("function windowClick(e){if(e.target.className==\"dc\"&&e.target.id){configDevice(e.target.id);}}\nfunction configDevice(id){modDlg(true, false, id);}\nfunction modDlg(open,save,id){var md=document.getElementById('mD');if(save){}if(open){try{var xmlHttp=new XMLHttpRequest(); xmlHttp.open('POST', '/config?ChipID=");
+  String script = F("function windowClick(e){if(e.target.className==\"dc\"&&e.target.id){configDevice(e.target.id);}}function configDevice(id){modDlg(true,false,id);}function modDlg(open,save,id){var md=document.getElementById('mD');if(save){var form=document.getElementById('deviceConfigForm');if(form){var action=form.action;var idx=action.indexOf('?');var url=action.substr(0, idx + 1);var params='';var elem;var parse;action=action.substr(idx + 1);while(1){idx=action.indexOf('&');if(idx>0)parse=action.substr(0, idx);else parse=action;if (parse.substr(parse.length-1)!='='){params+=parse+'&';}else{elem=document.getElementsByName(parse.substr(0,parse.length-1));if(elem && elem[0])params+=parse+elem[0].value+'&';}if(idx>0) action=action.substr(idx+1); else break;}try{var xmlHttp=new XMLHttpRequest();xmlHttp.open('POST',url+params,false);");
+  script += F("xmlHttp.send(null);if(xmlHttp.status!=200){alert('Fehler: '+xmlHttp.statusText);return;}}catch(err){alert('Fehler: '+err.message);return;}}}if(open){try{var xmlHttp=new XMLHttpRequest(); xmlHttp.open('POST','/config?ChipID=");
   script += getChipID();
   script += F("&action=form&deviceID='+id,false);xmlHttp.send(null);\nif(xmlHttp.status != 200){alert('Fehler: '+xmlHttp.statusText);return;}document.getElementById('mDCC').innerHTML=xmlHttp.responseText;}catch(err){alert('Fehler: '+err.message);return;}} md.style.visibility = (open ? 'visible' : 'hidden'); if (!open) { document.getElementById('mDCC').innerHTML = '';}}");
   server.send(200, "text/javascript", script);

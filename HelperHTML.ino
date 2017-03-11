@@ -44,7 +44,7 @@ String wifiForm() {
   html += htmlButton("submit", "action", "setup", "Setup");
   html += htmlButton("submit", "action", "reset", "Reset");
 
-  return htmlForm(html, action, "post", "", "Wifi");
+  return htmlForm(html, action, "post", "", "Wifi", "");
 }
 
 #ifdef _MQTT_SUPPORT
@@ -77,11 +77,17 @@ String flashForm() {
   html += htmlInput("file", "file", "", 0, "", "") + htmlNewLine();
   html += htmlButton("submit", "action", "flash", "Flash");
 
-  return htmlForm(html, action, "post", "multipart/form-data", "OTA");
+  return htmlForm(html, action, "post", "multipart/form-data", "OTA", "");
 }
 
-String htmlForm(String html, String pAction, String pMethod, String pEnctype, String pLegend) {
+String htmlForm(String html, String pAction, String pMethod, String pEnctype, String pLegend, String pID) {
   String result = F("<form");
+  if (pID != "") {
+    result += idField;
+    result += textMark;
+    result += pID;
+    result += textMark;
+  }
   result += actionField;
   result += textMark;
   result += pAction;

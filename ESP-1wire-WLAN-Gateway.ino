@@ -308,11 +308,14 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
     
         html += htmlLabel(F("minTemp"), F("min. temperature: "));
         html += htmlInput(F("minTemp"), F("number"), minStr, 0, "-55", "125") + htmlNewLine();
+        action += F("&minTemp=");
         html += htmlLabel(F("maxTemp"), F("max. temperature: "));
         html += htmlInput(F("maxTemp"), F("number"), maxStr, 0, "-55", "125");
+        action += F("&maxTemp=");
         html = htmlFieldSet(html, F("ConditionalSearch"));
         html += htmlLabel(F("customName"), F("custom name: "));
         html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+        action += F("&customName=");
       }
     }
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
@@ -322,30 +325,90 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
       String options = htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityLow), F("LOW"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityLow);
       options += htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh), F("HIGH"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh);
       html += htmlSelect(F("polarity"), options) + htmlNewLine();
+      action += F("&polarity=");
       html += htmlLabel(F("sourceselect"), F("SourceSelect: "));
       options = htmlOption(String(Esp1wire::SwitchDevice::SourceSelectActivityLatch), F("Activity Latch"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectActivityLatch);
       options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop), F("Channel FlipFlop"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop);
       options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectPIOStatus), F("PIO Status"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectPIOStatus);
       html += htmlSelect(F("sourceselect"), options) + htmlNewLine();
+      action += F("&sourceselect=");
       html += htmlLabel(F("channelselect"), F("ChannelSelect: "));
       options = htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectDisabled), F("Disabled"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectDisabled);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectA), F("A"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectA);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectB), F("B"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectB);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectBoth), F("Both"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectBoth);
       html += htmlSelect(F("channelselect"), options) + htmlNewLine();
+      action += F("&channelselect=");
       html += htmlLabel(F("channelflipflop"), F("ChannelFlipFlop: "));
       options = htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopA), F("A"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopA);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopB), F("B"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopB);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopBoth), F("Both"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopBoth);
       html += htmlSelect(F("channelflipflop"), options);
+      action += F("&channelflipflop=");
       html = htmlFieldSet(html, F("ConditionalSearch"));
       html += htmlLabel(F("customName"), F("custom name: "));
       html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+      action += F("&customName=");
     }
 
     if (html != "") {
       html = "<h4>" + device->getName() + " (" + deviceID + ")" + "</h4>" + html;
-      result = htmlForm(html, action, "post", "", "");
+      result = htmlForm(html, action, "post", "", "", "deviceConfigForm");
+    }
+  }
+
+  if (reqAction == "submit") {
+    // TemperatureDevice
+    if (device->getDeviceType() == Esp1wire::DeviceTypeTemperature) {
+      int8_t minTemp = server->arg("minTemp").toInt(), maxTemp = server->arg("maxTemp").toInt();
+
+      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+      if (minTemp != 0 && maxTemp != 0 && minTemp < maxTemp)
+        devConf.setValue("conditionalSearch", String(minTemp) + "," + String(maxTemp));
+      if (server->arg("customName") != "")
+        devConf.setValue("customName", server->arg("customName"));
+      else
+        devConf.unsetValue("customName");
+
+      if (devConf.hasChanged()) {
+        devConf.saveToFile();
+        ((Esp1wire::TemperatureDevice*)device)->readConfig();
+      }
+      
+      result = "ok";
+    }
+
+    // SwitchDevice
+    if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
+      int8_t polarity = server->arg("polarity").toInt() & 0x01;
+      int8_t sourceselect = server->arg("sourceselect").toInt() & 0x06;
+      int8_t channelselect = server->arg("channelselect").toInt() & 0x18;
+      int8_t channelflipflop = server->arg("channelflipflop").toInt() & 0x60;
+
+      switch(sourceselect) {
+        case Esp1wire::SwitchDevice::SourceSelectActivityLatch:
+        case Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop:
+        case Esp1wire::SwitchDevice::SourceSelectPIOStatus:
+          break;
+        default:
+          return ""; // SourceSelect: invalid value report Error
+          break;
+      }
+      
+      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+      devConf.setValue("conditionalSearch", String(channelflipflop | channelselect | sourceselect | polarity));
+
+      if (server->arg("customName") != "")
+        devConf.setValue("customName", server->arg("customName"));
+      else
+        devConf.unsetValue("customName");
+
+      if (devConf.hasChanged()) {
+        devConf.saveToFile();
+        ((Esp1wire::SwitchDevice*)device)->readConfig();
+      }
+
+      result = "ok";
     }
   }
 //#ifdef _DEBUG_TIMING

@@ -63,6 +63,8 @@ void EspConfig::setValue(String name, String value) {
     ConfigList *curr = first;
     while (curr != NULL) {
       if (curr->name == name) {
+        if (curr->value == value)
+          return;
         curr->value = value;
         break;
       }
@@ -84,6 +86,8 @@ void EspConfig::setValue(String name, String value) {
 }
 
 void EspConfig::unsetValue(String name) {
+  bool deleted = false;
+
   ConfigList *curr = first, *last = first;
   while (curr != NULL) {
     if (curr->name == name) {
@@ -92,6 +96,7 @@ void EspConfig::unsetValue(String name) {
       else
         last->next = curr->next;
       delete (curr);
+      deleted = true;
       break;
     }
     if (curr != first)
@@ -99,18 +104,23 @@ void EspConfig::unsetValue(String name) {
     curr = curr->next;
   }
 
-  configChanged = true;
+  if (deleted)
+    configChanged = true;
 }
 
 void EspConfig::unsetAll() {
+  bool deleted = false;
+
   ConfigList *curr = first;
   while (curr != NULL) {
     first = curr->next; 
     delete (curr);
     curr = first;
+    deleted = true;
   }
 
-  configChanged = true;
+  if (deleted)
+    configChanged = true;
 }
 
 bool EspConfig::saveToFile() {
