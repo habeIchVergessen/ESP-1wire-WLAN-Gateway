@@ -1,9 +1,9 @@
 #include "Arduino.h"
-#include "WiFiUDP.h"
+#include "EspWifi.h"
 #include "ESP8266WiFi.h"
-#include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
+#include "WiFiClient.h"
+#include "ESP8266mDNS.h"
+#include "WiFiUDP.h"
 #include "FS.h"
 #include "detail/RequestHandlersImpl.h"
 
@@ -13,6 +13,16 @@
 
 extern "C" {
 #include "user_interface.h"
+}
+
+DeviceConfigCallback deviceConfigCallback = NULL;
+void registerDeviceConfigCallback(DeviceConfigCallback callback) {
+  deviceConfigCallback = callback;
+}
+
+DeviceListCallback deviceListCallback = NULL;
+void registerDeviceListCallback(DeviceListCallback callback) {
+  deviceListCallback = callback;
 }
 
 // source: http://esp8266-re.foogod.com/wiki/SPI_Flash_Format
@@ -168,6 +178,9 @@ void setupHttp() {
 
   server.on("/config", HTTP_GET, httpHandleConfig);
   server.on("/config", HTTP_POST, httpHandleConfig);
+  server.on("/devices", HTTP_GET, httpHandleDevices);
+  server.on("/static/deviceList.css", HTTP_GET, httpHandleDeviceListCss);
+  server.on("/static/deviceList.js", HTTP_GET, httpHandleDeviceListJss);
   server.onNotFound(httpHandleNotFound);
   server.addHandler(new FunctionRequestHandler(httpHandleOTA, httpHandleOTAData, ("/ota/" + getChipID() + ".bin").c_str(), HTTP_POST));
 
@@ -219,6 +232,20 @@ void httpHandleConfig() {
       server.client().setNoDelay(true);
       server.send(403, "text/plain", "Forbidden");
       httpRequestProcessed = true;
+    }
+
+    if (server.arg("deviceID") != "") {
+      String result = "";
+      if (deviceConfigCallback != NULL && (result = deviceConfigCallback(&server)) != "") {
+        server.client().setNoDelay(true);
+        server.send(200, "text/html", result);
+        httpRequestProcessed = true;
+      } else {
+        server.client().setNoDelay(true);
+        server.send(403, "text/plain", "Forbidden");
+        httpRequestProcessed = true;
+      }
+      return;
     }
     
     if (server.arg("wifi") == "submit") {
@@ -274,6 +301,49 @@ Serial.println("mqtt: " + server.arg("mqtt"));
   
   server.client().setNoDelay(true);
   server.send(200, "text/plain", message);
+  httpRequestProcessed = true;
+}
+
+void httpHandleDevices() {
+  Serial.print("httpHandleDevices: ");
+  String message = "", devList = "";
+
+  if (server.method() == HTTP_GET) {
+    if (deviceListCallback != NULL && (devList = deviceListCallback()) != "") {
+#ifdef _DEBUG_TIMING
+      unsigned long sendStart = micros();
+#endif
+      server.client().setNoDelay(true);
+      message = F("<!DOCTYPE html><html lang=\"de\">\n<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"/static/deviceList.css\">\n<script type=\"text/javascript\" src=\"/static/deviceList.js\"></script>\n</head>");
+      message += F("\n<body onclick=\"javascript:windowClick(event)\"><center>\n<table>\n<tr><th>Name</th><th>Type</th></tr>");
+      message += devList;
+      message += F("</table>\n</center><div id=\"mD\"><center><div id=\"mDC\"><p id=\"mDCC\"></p><p id=\"mDCB\"><a class=\"dc\" onclick=\"javascript:modDlg(false, true)\">Speichern</a><a class=\"dc\" onclick=\"javascript:modDlg(false)\">Schlie&szlig;en</a></p></div></center></div></body></html>");
+      server.send(200, "text/html", message);
+
+#ifdef _DEBUG_TIMING
+      Serial.print("send " + elapTime(sendStart) + " ");
+#endif
+      httpRequestProcessed = true;
+    }
+  }
+}
+
+void httpHandleDeviceListCss() {
+  Serial.print("httpHandleDeviceListCss: ");
+  server.sendHeader("Cache-Control", "public, max-age=86400");
+  server.client().setNoDelay(true);
+  server.send(200, "text/css", F("table td{padding:5px 15px 0px 0px;} table th{text-align:left;} .dc{border: 1px solid #A0A0A0;border-radius:5px;padding:0px 3px 0px 3px;} .dc.text{text-decoration: none;} .dc:hover{border: 1px solid #5F5F5F;background-color:#D0D0D0;cursor:pointer;} #mD{background:rgba(0,0,0,0.5);visibility:hidden;position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;padding-top:10%;} #mDC{border:1px solid #A0A0A0;border-radius:5px;background:rgba(255,255,255,1);margin:auto;display:inline-block;} #mDCC fieldset{margin-left:10px;margin-right:10px;} #mDCC label{margin-left:10px;width:8em;text-align:left;display:inline-block;} #mDCC select,input{margin:5px 10px 0px 10px;width:13em;display:inline-block;} #mDCB{float:right;margin:10px 10px 10px 10px;} #mDCB a{margin:0px 2px 0px 2px;}"));
+  httpRequestProcessed = true;
+}
+
+void httpHandleDeviceListJss() {
+  Serial.print("httpHandleDeviceListJss: ");
+  server.sendHeader("Cache-Control", "public, max-age=86400");
+  server.client().setNoDelay(true);
+  String script = F("function windowClick(e){if(e.target.className==\"dc\"&&e.target.id){configDevice(e.target.id);}}\nfunction configDevice(id){modDlg(true, false, id);}\nfunction modDlg(open,save,id){var md=document.getElementById('mD');if(save){}if(open){try{var xmlHttp=new XMLHttpRequest(); xmlHttp.open('POST', '/config?ChipID=");
+  script += getChipID();
+  script += F("&action=form&deviceID='+id,false);xmlHttp.send(null);\nif(xmlHttp.status != 200){alert('Fehler: '+xmlHttp.statusText);return;}document.getElementById('mDCC').innerHTML=xmlHttp.responseText;}catch(err){alert('Fehler: '+err.message);return;}} md.style.visibility = (open ? 'visible' : 'hidden'); if (!open) { document.getElementById('mDCC').innerHTML = '';}}");
+  server.send(200, "text/javascript", script);
   httpRequestProcessed = true;
 }
 

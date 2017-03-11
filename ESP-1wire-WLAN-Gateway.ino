@@ -1,10 +1,15 @@
 #include "Arduino.h"
 
+#include "SPI.h"      // suppress compile errors from other libraries
+#include "Ticker.h"   // suppress compile errors from other libraries
+
 #include "Wire.h"
 #include "OneWire.h"
 #include "DS2482.h"
 
 #include "ESP8266WiFi.h"
+#include "ESP8266WebServer.h"
+#include "EspWifi.h"
 
 // KeyValueProtocol with full format keys
 //#define KVP_LONG_KEY_FORMAT 1
@@ -61,8 +66,11 @@ void setup() {
   while (deviceFilter.hasNext()) {
     Esp1wire::Device *device = deviceFilter.getNextDevice();
     Serial.print("device: " + device->getOneWireDeviceID() + " -> " + device->getName());
+    
     // temperature devices
     if (device->getDeviceType() == Esp1wire::DeviceTypeTemperature) {
+      ((Esp1wire::TemperatureDevice*)device)->readConfig();
+
       switch (((Esp1wire::TemperatureDevice*)device)->readResolution()) {
         case Esp1wire::TemperatureDevice::resolution12bit:
           Serial.print(" res: 12 bit");
@@ -84,7 +92,6 @@ void setup() {
       if (((Esp1wire::TemperatureDevice*)device)->getAlarmTemperatures(&alarmLow, &alarmHigh)) {
         Serial.print(" alarm low: " + String(alarmLow) + " high: " + String(alarmHigh));
       }
-      ((Esp1wire::TemperatureDevice*)device)->readConfig();
     }
     // switch devices
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
@@ -93,6 +100,10 @@ void setup() {
     Serial.println();
   }
 
+  // deviceConfig handler
+  registerDeviceConfigCallback(handleDeviceConfig);
+  registerDeviceListCallback(handleDeviceList);
+  
   printHeapFree();
 
 #ifdef _DEBUG_TEST_DATA
@@ -252,6 +263,120 @@ String getDictionary() {
   DictionaryValue(Current) +
   DictionaryValue(Capacity);
 #endif
+
+  return result;
+}
+
+String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String deviceID) {
+  String result = "";
+  String reqAction = server->arg("action"), deviceID = server->arg("deviceID");
+  
+  if (reqAction != "form" && reqAction != "submit")
+    return result;
+
+  // search device
+  Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter();
+  Esp1wire::Device *device;
+
+  while (deviceFilter.hasNext() && (device = deviceFilter.getNextDevice())->getOneWireDeviceID() != deviceID)
+    ;
+
+  // no match
+  if (device == NULL || device->getOneWireDeviceID() != deviceID)
+    return result;
+
+//#ifdef _DEBUG_TIMING
+//    unsigned long formStart = micros();
+//#endif
+  if (reqAction == "form") {
+    String action = F("/config?ChipID=");
+    action += getChipID();
+    action += F("&deviceID=");
+    action += deviceID;
+    action += F("&action=submit");
+
+    String html = "";
+    if (device->getDeviceType() == Esp1wire::DeviceTypeTemperature) {
+      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+      String value = devConf.getValue(F("conditionalSearch"));
+      int8_t idx;
+      if ((idx = value.indexOf(",")) > 0) {  // min & max
+        int8_t min = value.substring(0, idx).toInt();
+        int8_t max = value.substring(idx + 1, value.length()).toInt();
+        String minStr = (min != 0 || max != 0 ? String(min) : "");
+        String maxStr = (min != 0 || max != 0 ? String(max) : "");
+    
+        html += htmlLabel(F("minTemp"), F("min. temperature: "));
+        html += htmlInput(F("minTemp"), F("number"), minStr, 0, "-55", "125") + htmlNewLine();
+        html += htmlLabel(F("maxTemp"), F("max. temperature: "));
+        html += htmlInput(F("maxTemp"), F("number"), maxStr, 0, "-55", "125");
+        html = htmlFieldSet(html, F("ConditionalSearch"));
+        html += htmlLabel(F("customName"), F("custom name: "));
+        html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+      }
+    }
+    if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
+      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+      uint8_t curr = devConf.getValue(F("conditionalSearch")).toInt();
+      html += htmlLabel(F("polarity"), F("Polarity: "));
+      String options = htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityLow), F("LOW"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityLow);
+      options += htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh), F("HIGH"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh);
+      html += htmlSelect(F("polarity"), options) + htmlNewLine();
+      html += htmlLabel(F("sourceselect"), F("SourceSelect: "));
+      options = htmlOption(String(Esp1wire::SwitchDevice::SourceSelectActivityLatch), F("Activity Latch"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectActivityLatch);
+      options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop), F("Channel FlipFlop"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop);
+      options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectPIOStatus), F("PIO Status"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectPIOStatus);
+      html += htmlSelect(F("sourceselect"), options) + htmlNewLine();
+      html += htmlLabel(F("channelselect"), F("ChannelSelect: "));
+      options = htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectDisabled), F("Disabled"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectDisabled);
+      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectA), F("A"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectA);
+      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectB), F("B"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectB);
+      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectBoth), F("Both"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectBoth);
+      html += htmlSelect(F("channelselect"), options) + htmlNewLine();
+      html += htmlLabel(F("channelflipflop"), F("ChannelFlipFlop: "));
+      options = htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopA), F("A"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopA);
+      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopB), F("B"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopB);
+      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopBoth), F("Both"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopBoth);
+      html += htmlSelect(F("channelflipflop"), options);
+      html = htmlFieldSet(html, F("ConditionalSearch"));
+      html += htmlLabel(F("customName"), F("custom name: "));
+      html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+    }
+
+    if (html != "") {
+      html = "<h4>" + device->getName() + " (" + deviceID + ")" + "</h4>" + html;
+      result = htmlForm(html, action, "post", "", "");
+    }
+  }
+//#ifdef _DEBUG_TIMING
+//    Serial.println("handleDeviceConfig: result = " + String(result.length()) + " " + elapTime(formStart));
+//#endif
+  
+  return result;
+}
+
+String handleDeviceList() {
+  String result = "";
+
+  // search device
+  Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter();
+  Esp1wire::Device *device;
+  while (deviceFilter.hasNext()) {
+    device = deviceFilter.getNextDevice();
+
+    result += F("\n<tr><td>");
+    result += device->getOneWireDeviceID();
+    result += F("</td><td>");
+    result += device->getName();
+    result += F("</td><td>");
+    switch (device->getDeviceType()) {
+      case Esp1wire::DeviceTypeSwitch:
+      case Esp1wire::DeviceTypeTemperature:
+        result += htmlAnker(device->getOneWireDeviceID(), F("dc"), F("..."));
+        break;
+    }
+    result += F("</td></tr>");
+  }
 
   return result;
 }
