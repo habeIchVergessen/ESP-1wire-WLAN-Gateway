@@ -528,6 +528,42 @@ class Esp1wire {
         bool              mStarted = false;
     };
 
+    // class Scheduler
+    class Scheduler {
+    public:
+      enum ScheduleAction {
+        scheduleRequestTemperatues  = (byte)0x00
+      , scheduleRequestBatteries    = (byte)0x01
+      , scheduleReadCounter         = (byte)0x02
+      , scheduleAlarmSearch         = (byte)0x03
+      };
+
+      typedef void (*SchedulerCallback) (DeviceType filter);
+
+      ~Scheduler();
+      void registerCallback(ScheduleAction action, SchedulerCallback callback);
+      void addSchedule(uint16_t interval, ScheduleAction action, DeviceType filter=DeviceTypeAll);
+      void runSchedules();
+      
+    protected:
+      typedef struct __attribute__((packed)) Schedule
+      {
+        uint32_t        lastExecution = 0;
+        uint16_t        interval;
+        ScheduleAction  action;
+        DeviceType      filter;
+      };
+      
+      typedef struct __attribute__((packed)) ScheduleList
+      {
+        Schedule        *schedule;
+        ScheduleList    *next;
+      };
+
+      ScheduleList *first = NULL, *last = NULL;
+      SchedulerCallback schedulerCallbacks[4] = { NULL, NULL, NULL, NULL };
+    };
+    
   protected:
     // data and managent function AlarmFilter
     Bus::DeviceList   *alarmFirst, *alarmLast;

@@ -1597,3 +1597,60 @@ Esp1wire::Device* Esp1wire::AlarmFilter::getNextDevice() {
   return currList->device;
 }
 
+// class Scheduler
+Esp1wire::Scheduler::~Scheduler() {
+  ScheduleList *curr;
+  
+  while (first != NULL) {
+    delete (first->schedule);
+    curr = first->next;
+    delete (first);
+    first = curr;
+  }
+
+  first = last = curr = NULL;
+}
+  
+void Esp1wire::Scheduler::addSchedule(uint16_t interval, ScheduleAction action, DeviceType filter) {
+  if (first == NULL) {
+    first = last = new ScheduleList();
+    first->schedule = new Schedule();
+    first->next = NULL;
+
+    first->schedule->interval = interval * 1000;
+    first->schedule->action = action;
+    first->schedule->filter = filter;
+  } else {
+    last->next = new ScheduleList();
+    last = last->next;
+
+    last->schedule = new Schedule();
+    last->next = NULL;
+
+    last->schedule->interval = interval * 1000;
+    last->schedule->action = action;
+    last->schedule->filter = filter;
+  }
+}
+
+void Esp1wire::Scheduler::runSchedules() {
+  ScheduleList *curr = first;
+
+  unsigned long currTime = millis();
+  
+  while (curr != NULL) {
+    if (currTime - curr->schedule->lastExecution > curr->schedule->interval) {
+      Serial.println("runSchedules: " + String(curr->schedule->action));
+      if (schedulerCallbacks[curr->schedule->action] != NULL)
+        schedulerCallbacks[curr->schedule->action](curr->schedule->filter);
+      curr->schedule->lastExecution = millis();
+    }
+
+    curr = curr->next;
+  }
+}
+
+void Esp1wire::Scheduler::registerCallback(ScheduleAction action, SchedulerCallback callback) {
+  schedulerCallbacks[action] = callback;
+}
+

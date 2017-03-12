@@ -32,17 +32,24 @@ bool httpRequestProcessed     = false;
 #define PROGNAME "Esp1wire"
 #define PROGVERS "0.1"
 
+//#define _MQTT_SUPPORT
+
 #include "EspConfig.h"
 #include "Esp1wire.h"
 
 Esp1wire esp1wire;
-
-//#define _MQTT_SUPPORT
+Esp1wire::Scheduler scheduler;
 
 // global config object
 EspConfig espConfig(PROGNAME);
 
 unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0, lastAlarmAll = 0;
+
+// prototypes
+void alarmSearch(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
+void readTemperatures(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
+void readBatteries(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
+void readCounter(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 
 void setup() {
   Serial.begin(115200);
@@ -103,6 +110,17 @@ void setup() {
   // deviceConfig handler
   registerDeviceConfigCallback(handleDeviceConfig);
   registerDeviceListCallback(handleDeviceList);
+
+  // scheduler
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleAlarmSearch, alarmSearch);
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleRequestTemperatues, readTemperatures);
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleRequestBatteries, readBatteries);
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleReadCounter, readCounter);
+  
+  scheduler.addSchedule(5, Esp1wire::Scheduler::scheduleAlarmSearch, Esp1wire::DeviceTypeSwitch);
+  scheduler.addSchedule(60, Esp1wire::Scheduler::scheduleRequestTemperatues);
+  scheduler.addSchedule(30, Esp1wire::Scheduler::scheduleRequestBatteries);
+  scheduler.addSchedule(60, Esp1wire::Scheduler::scheduleReadCounter);
   
   printHeapFree();
 
@@ -112,30 +130,9 @@ void setup() {
 }
 
 void loop() {
-  // read alarm
-  if ((lastAlarm + 5000) < millis()) {
-    alarmSearch();
-    lastAlarm = millis();
-  }
+  // scheduler
+  scheduler.runSchedules();
   
-  // read counter
-  if ((lastCounter + 60000) < millis()) {
-    readCounter();
-    lastCounter = millis();
-  }
-  
-  // read temp
-  if ((lastTemp + 60000) < millis()) {
-    readTemperatures();
-    lastTemp = millis();
-  }
-
-  // read batt
-  if ((lastBatt + 30000) < millis()) {
-    readBatteries();
-    lastBatt = millis();
-  }
-
   // handle wifi
   loopEspWifi();
 
@@ -145,7 +142,7 @@ void loop() {
   }
 }
 
-void alarmSearch() {
+void alarmSearch(Esp1wire::DeviceType filter) {
   // add parameter Esp1wire::DeviceTypeSwitch
   Esp1wire::AlarmFilter alarmFilter = esp1wire.alarmSearch(Esp1wire::DeviceTypeSwitch);
   while (alarmFilter.hasNext()) {
@@ -172,7 +169,7 @@ void alarmSearch() {
   }
 }
 
-void readCounter() {
+void readCounter(Esp1wire::DeviceType filter) {
   printHeapFree();
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeCounter);
   while (deviceFilter.hasNext()) {
@@ -187,7 +184,7 @@ void readCounter() {
   }
 }
 
-void readTemperatures() {
+void readTemperatures(Esp1wire::DeviceType filter) {
   printHeapFree();
 
   // calculate temperatures
@@ -210,7 +207,7 @@ void readTemperatures() {
   }
 }
 
-void readBatteries() {
+void readBatteries(Esp1wire::DeviceType filter) {
   printHeapFree();
 
   // read
@@ -353,7 +350,7 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
 
     if (html != "") {
       html = "<h4>" + device->getName() + " (" + deviceID + ")" + "</h4>" + html;
-      result = htmlForm(html, action, "post", "", "", "deviceConfigForm");
+      result = htmlForm(html, action, "post", "configForm", "", "");
     }
   }
 
@@ -427,7 +424,7 @@ String handleDeviceList() {
   while (deviceFilter.hasNext()) {
     device = deviceFilter.getNextDevice();
 
-    result += F("\n<tr><td>");
+    result += F("<tr><td>");
     result += device->getOneWireDeviceID();
     result += F("</td><td>");
     result += device->getName();
