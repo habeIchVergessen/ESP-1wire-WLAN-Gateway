@@ -19,16 +19,17 @@
 String htmlForm(String html, String pAction, String pMethod, String pID="", String pEnctype="", String pLegend="");
 String htmlInput(String pName, String pType, String pValue, int pMaxLength=0, String pMinNumber="", String pMaxNumber="");
 String htmlFieldSet(String pHtml, String pLegend="");
+String htmlOption(String pValue, String pText, bool pSelected=false);
 
 String htmlBody(String html) {
   String doc = F("<!DOCTYPE html><html lang=\"de\"><body>");
   doc += F("<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"/static/deviceList.css\">\n<script type=\"text/javascript\" src=\"/static/deviceList.js\"></script>\n</head>");
-  doc += F("<body onclick=\"javascript:windowClick(event)\"><center><div style=\"width: 40em;\">");
+  doc += F("<body onclick=\"javascript:windowClick(event)\"><center><div style=\"width: 30em;\">");
   doc += "<h1>"; doc += PROGNAME; doc += " v"; doc += PROGVERS; doc += "@" + getChipID() + "</h1>";
   html.replace("\n", "<br>");
   doc += html;
   // dialog crap
-  doc += F("<div id=\"mD\"><center><div id=\"mDC\"><p id=\"mDCC\"></p><p id=\"mDCB\"><a class=\"dc\" onclick=\"javascript:modDlg(false, true)\">Speichern</a><a class=\"dc\" onclick=\"javascript:modDlg(false)\">Schlie&szlig;en</a></p></div></center></div>");
+  doc += F("<div id=\"mD\"><center><div id=\"mDC\"><p id=\"mDCC\"></p><p id=\"mDCB\"><a class=\"dc\" onclick=\"javascript:modDlg(false, true)\">Save</a><a class=\"dc\" onclick=\"javascript:modDlg(false)\">Close</a></p></div></center></div>");
   doc += F("</div></center></body></html>");
 
   return doc;

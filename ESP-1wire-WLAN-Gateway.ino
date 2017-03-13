@@ -110,17 +110,16 @@ void setup() {
   // deviceConfig handler
   registerDeviceConfigCallback(handleDeviceConfig);
   registerDeviceListCallback(handleDeviceList);
+  // scheduleConfig handler
+  registerScheduleConfigCallback(handleScheduleConfig);
+  registerScheduleListCallback(handleScheduleList);
 
   // scheduler
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleAlarmSearch, alarmSearch);
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleRequestTemperatues, readTemperatures);
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleRequestBatteries, readBatteries);
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleReadCounter, readCounter);
-  
-  scheduler.addSchedule(5, Esp1wire::Scheduler::scheduleAlarmSearch, Esp1wire::DeviceTypeSwitch);
-  scheduler.addSchedule(60, Esp1wire::Scheduler::scheduleRequestTemperatues);
-  scheduler.addSchedule(30, Esp1wire::Scheduler::scheduleRequestBatteries);
-  scheduler.addSchedule(60, Esp1wire::Scheduler::scheduleReadCounter);
+  scheduler.loadSchedules();
   
   printHeapFree();
 
@@ -264,7 +263,7 @@ String getDictionary() {
   return result;
 }
 
-String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String deviceID) {
+String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
   String result = "";
   String reqAction = server->arg("action"), deviceID = server->arg("deviceID");
   
@@ -279,8 +278,10 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
     ;
 
   // no match
-  if (device == NULL || device->getOneWireDeviceID() != deviceID)
-    return result;
+  if (device == NULL || device->getOneWireDeviceID() != deviceID) {
+    *resultCode = 404;
+    return "Not Found";
+  }
 
 //#ifdef _DEBUG_TIMING
 //    unsigned long formStart = micros();
@@ -349,6 +350,7 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
     }
 
     if (html != "") {
+      *resultCode = 200;
       html = "<h4>" + device->getName() + " (" + deviceID + ")" + "</h4>" + html;
       result = htmlForm(html, action, "post", "configForm", "", "");
     }
@@ -371,7 +373,8 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
         devConf.saveToFile();
         ((Esp1wire::TemperatureDevice*)device)->readConfig();
       }
-      
+
+      *resultCode = 200;
       result = "ok";
     }
 
@@ -405,6 +408,7 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
         ((Esp1wire::SwitchDevice*)device)->readConfig();
       }
 
+      *resultCode = 200;
       result = "ok";
     }
   }
@@ -437,6 +441,92 @@ String handleDeviceList() {
     }
     result += F("</td></tr>");
   }
+
+  return result;
+}
+
+String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
+  uint16_t interval;
+  Esp1wire::Scheduler::ScheduleAction action;
+  Esp1wire::DeviceType filter;
+
+  String schedule = server->arg("schedule"), result = "";
+
+  if (server->arg("action") == "form") {
+    Serial.println("handleScheduleConfig: form");
+    String actStr = F("/config?ChipID=");
+    actStr += getChipID();
+    actStr += F("&schedule=");
+    actStr += schedule;
+    actStr += F("&action=submit");
+  
+    bool useValues = (schedule != "add" && scheduler.getSchedule(schedule.toInt(), &interval, &action, &filter));
+  
+    result = htmlLabel(F("interval"), F("Interval"));
+    result += htmlInput(F("interval"), F("number"), String(useValues ? String(interval) : ""), 0, F("1"), F("3600")) + htmlNewLine();
+    result +=  htmlLabel(F("schedAction"), F("Action"));
+    String options = htmlOption(String(Esp1wire::Scheduler::scheduleAlarmSearch), F("AlarmSearch"), (useValues && action == Esp1wire::Scheduler::scheduleAlarmSearch));
+    options += htmlOption(String(Esp1wire::Scheduler::scheduleRequestTemperatues), F("RequestTemperatues"), (useValues && action == Esp1wire::Scheduler::scheduleRequestTemperatues));
+    options += htmlOption(String(Esp1wire::Scheduler::scheduleRequestBatteries), F("RequestBatteries"), (useValues && action == Esp1wire::Scheduler::scheduleRequestBatteries));
+    options += htmlOption(String(Esp1wire::Scheduler::scheduleReadCounter), F("ReadCounter"), (useValues && action == Esp1wire::Scheduler::scheduleReadCounter));
+    if (useValues) // aka change existing
+      options += htmlOption(String(0xFF), F("Disable"), false);
+    result += htmlSelect(F("schedAction"), options) + htmlNewLine();
+    result += htmlLabel(F("filter"), F("Filter"));
+    options = htmlOption(String(Esp1wire::DeviceTypeAll), F("None"), (useValues && filter == Esp1wire::DeviceTypeAll));
+    options += htmlOption(String(Esp1wire::DeviceTypeSwitch), F("DeviceTypeSwitch"), (useValues && filter == Esp1wire::DeviceTypeSwitch));
+    result += htmlSelect(F("filter"), options) + htmlNewLine();
+    result = "<h4>Schedule</h4>" + htmlForm(result, actStr, F("post"), F("submitForm"), F(""), F("")); 
+      
+    *resultCode = 200;
+  }
+
+  if (server->arg("action") == "submit") {
+    Serial.print("handleScheduleConfig: submit ");
+    *resultCode = 303;
+  }
+  
+  return result;  
+}
+
+String handleScheduleList() {
+  uint16_t interval;
+  Esp1wire::Scheduler::ScheduleAction action;
+  Esp1wire::DeviceType filter;
+  
+  String result = F("<table><tr><th>Gap</th><th>Action</th><th>Filter</th><th></th><th></th></tr>");
+  for (uint8_t idx=0; idx<scheduler.getSchedulesCount(); idx++) {
+    if (scheduler.getSchedule(idx, &interval, &action, &filter)) {
+      result += F("<tr><td>");
+      result += String(interval);
+      result += F("</td><td>");
+      switch (action) {
+        case Esp1wire::Scheduler::scheduleRequestTemperatues:
+          result += F("RequestTemperatues</td><td>");
+          break;
+        case Esp1wire::Scheduler::scheduleRequestBatteries:
+          result += F("RequestBatteries</td><td>");
+          break;
+        case Esp1wire::Scheduler::scheduleReadCounter:
+          result += F("ReadCounter</td><td>");
+          break;
+        case Esp1wire::Scheduler::scheduleAlarmSearch:
+          result += F("AlarmSearch</td><td>");
+          switch (filter) {
+            case Esp1wire::DeviceTypeSwitch:
+              result += F("DeviceTypeSwitch");
+              break;
+          }
+          break;
+      }
+      result += F("</td><td><a id=\"schedule#");
+      result += String(idx);
+      result += F("\" class=\"dc\">...</a>");
+      result += F("</td></tr>");
+    }
+  }
+
+  result += F("</table>");
 
   return result;
 }

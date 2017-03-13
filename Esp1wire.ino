@@ -1602,7 +1602,6 @@ Esp1wire::Scheduler::~Scheduler() {
   ScheduleList *curr;
   
   while (first != NULL) {
-    delete (first->schedule);
     curr = first->next;
     delete (first);
     first = curr;
@@ -1614,23 +1613,22 @@ Esp1wire::Scheduler::~Scheduler() {
 void Esp1wire::Scheduler::addSchedule(uint16_t interval, ScheduleAction action, DeviceType filter) {
   if (first == NULL) {
     first = last = new ScheduleList();
-    first->schedule = new Schedule();
     first->next = NULL;
 
-    first->schedule->interval = interval * 1000;
-    first->schedule->action = action;
-    first->schedule->filter = filter;
+    first->interval = interval * 1000;
+    first->action = action;
+    first->filter = filter;
   } else {
     last->next = new ScheduleList();
     last = last->next;
-
-    last->schedule = new Schedule();
     last->next = NULL;
 
-    last->schedule->interval = interval * 1000;
-    last->schedule->action = action;
-    last->schedule->filter = filter;
+    last->interval = interval * 1000;
+    last->action = action;
+    last->filter = filter;
   }
+
+  mSchedulesCount++;
 }
 
 void Esp1wire::Scheduler::runSchedules() {
@@ -1639,18 +1637,61 @@ void Esp1wire::Scheduler::runSchedules() {
   unsigned long currTime = millis();
   
   while (curr != NULL) {
-    if (currTime - curr->schedule->lastExecution > curr->schedule->interval) {
-      Serial.println("runSchedules: " + String(curr->schedule->action));
-      if (schedulerCallbacks[curr->schedule->action] != NULL)
-        schedulerCallbacks[curr->schedule->action](curr->schedule->filter);
-      curr->schedule->lastExecution = millis();
+    if (currTime - curr->lastExecution > curr->interval) {
+      if (schedulerCallbacks[curr->action] != NULL)
+        schedulerCallbacks[curr->action](curr->filter);
+      curr->lastExecution = millis();
     }
 
     curr = curr->next;
   }
 }
 
+void Esp1wire::Scheduler::loadSchedules() {
+  EspConfig schedConfig = EspConfig("scheduler");
+
+  uint8_t schedules = schedConfig.getValue("schedules").toInt();
+  
+  if (schedules == 0) {
+    Serial.println("scheduler not configured! using defaults");
+    scheduler.addSchedule(5, Esp1wire::Scheduler::scheduleAlarmSearch, Esp1wire::DeviceTypeSwitch);
+    scheduler.addSchedule(120, Esp1wire::Scheduler::scheduleRequestTemperatues);
+    scheduler.addSchedule(60, Esp1wire::Scheduler::scheduleRequestBatteries);
+    scheduler.addSchedule(60, Esp1wire::Scheduler::scheduleReadCounter);
+
+    return;
+  }
+
+  // TODO: load schedules
+}
+
 void Esp1wire::Scheduler::registerCallback(ScheduleAction action, SchedulerCallback callback) {
   schedulerCallbacks[action] = callback;
+}
+
+bool Esp1wire::Scheduler::getSchedule(uint8_t idx, uint16_t *interval, ScheduleAction *action, DeviceType *filter) {
+  bool result = false;
+  
+  if (idx >= mSchedulesCount)
+    return result;
+    
+  ScheduleList *curr = first;
+  uint8_t cnt = 0;
+  
+  while (curr != NULL) {
+    if (cnt != idx) {
+      curr = curr->next;
+      cnt++;
+      continue;
+    }
+
+    *interval = curr->interval / 1000;
+    *action = curr->action;
+    *filter = curr->filter;
+    result = true;
+    break;
+  }
+
+  return result;
 }
 

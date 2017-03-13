@@ -541,27 +541,26 @@ class Esp1wire {
       typedef void (*SchedulerCallback) (DeviceType filter);
 
       ~Scheduler();
-      void registerCallback(ScheduleAction action, SchedulerCallback callback);
-      void addSchedule(uint16_t interval, ScheduleAction action, DeviceType filter=DeviceTypeAll);
-      void runSchedules();
+      void      registerCallback(ScheduleAction action, SchedulerCallback callback);
+      void      addSchedule(uint16_t interval, ScheduleAction action, DeviceType filter=DeviceTypeAll);
+      void      runSchedules();
+      void      loadSchedules();
+      uint8_t   getSchedulesCount() { return mSchedulesCount; };
+      bool      getSchedule(uint8_t idx, uint16_t *interval, ScheduleAction *action, DeviceType *filter);
       
     protected:
-      typedef struct __attribute__((packed)) Schedule
-      {
-        uint32_t        lastExecution = 0;
-        uint16_t        interval;
-        ScheduleAction  action;
-        DeviceType      filter;
-      };
-      
       typedef struct __attribute__((packed)) ScheduleList
       {
-        Schedule        *schedule;
+        uint32_t        lastExecution = 0;
+        uint32_t        interval;
+        ScheduleAction  action;
+        DeviceType      filter;
         ScheduleList    *next;
       };
 
-      ScheduleList *first = NULL, *last = NULL;
+      ScheduleList      *first = NULL, *last = NULL;
       SchedulerCallback schedulerCallbacks[4] = { NULL, NULL, NULL, NULL };
+      uint8_t           mSchedulesCount = 0;
     };
     
   protected:

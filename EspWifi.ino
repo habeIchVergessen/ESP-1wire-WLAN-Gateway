@@ -25,6 +25,16 @@ void registerDeviceListCallback(DeviceListCallback callback) {
   deviceListCallback = callback;
 }
 
+DeviceConfigCallback scheduleConfigCallback = NULL;
+void registerScheduleConfigCallback(DeviceConfigCallback callback) {
+  scheduleConfigCallback = callback;
+}
+
+DeviceListCallback scheduleListCallback = NULL;
+void registerScheduleListCallback(DeviceListCallback callback) {
+  scheduleListCallback = callback;
+}
+
 // source: http://esp8266-re.foogod.com/wiki/SPI_Flash_Format
 typedef struct __attribute__((packed))
 {
@@ -179,6 +189,7 @@ void setupHttp() {
   server.on("/config", HTTP_GET, httpHandleConfig);
   server.on("/config", HTTP_POST, httpHandleConfig);
   server.on("/devices", HTTP_GET, httpHandleDevices);
+  server.on("/schedules", HTTP_GET, httpHandleSchedules);
   server.on("/static/deviceList.css", HTTP_GET, httpHandleDeviceListCss);
   server.on("/static/deviceList.js", HTTP_GET, httpHandleDeviceListJss);
   server.onNotFound(httpHandleNotFound);
@@ -212,7 +223,7 @@ void httpHandleRoot() {
   html += F("</table>");
   message += htmlFieldSet(html, "MQTT");
 #endif
-  message += "<a id=\"ota\" class=\"dc\">OTA</a><a href=\"/devices\" class=\"dc\">Devices</a>";
+  message += "<a href=\"/devices\" class=\"dc\">Devices</a><a href=\"/schedules\" class=\"dc\">Schedules</a><a id=\"ota\" class=\"dc\">OTA</a>";
 
   server.client().setNoDelay(true);
   server.send(200, "text/html", htmlBody(message));
@@ -254,24 +265,48 @@ void httpHandleConfig() {
 
     if (server.arg("deviceID") != "") {
       String result = "";
-      if (deviceConfigCallback != NULL && (result = deviceConfigCallback(&server)) != "") {
+      uint16_t resultCode;
+      if (deviceConfigCallback != NULL && (result = deviceConfigCallback(&server, &resultCode))) {
         server.client().setNoDelay(true);
-        server.send(200, "text/html", result);
+        server.send(resultCode, "text/html", result);
         httpRequestProcessed = true;
-      } else {
-        server.client().setNoDelay(true);
-        server.send(403, "text/plain", "Forbidden");
-        httpRequestProcessed = true;
+        return;
       }
+
+      server.client().setNoDelay(true);
+      server.send(403, "text/plain", "Forbidden");
+      httpRequestProcessed = true;
       return;
     }
     
-    if (server.hasArg("devices") && server.arg("devices")== "") {
-      server.client().setNoDelay(true);
-      server.sendHeader("Location", "/devices");
-      server.send(303, "text/plain", "See Other");
+    if (server.hasArg("schedule") && server.arg("schedule") != "") {
+      uint16_t resultCode = 0;
+      String result;
+      
+      if (scheduleConfigCallback != NULL)
+        result = scheduleConfigCallback(&server, &resultCode);
+
+      Serial.print("resultCode: " + String(resultCode) + " ");
+      switch (resultCode) {
+        case 200:
+          server.client().setNoDelay(true);
+          server.send(resultCode, "text/html", result);
+          break;
+        case 303:
+          server.client().setNoDelay(true);
+          server.sendHeader("Location", "/schedules");
+          server.send(303, "text/plain", "See Other");
+          break;
+        default:
+          server.client().setNoDelay(true);
+          server.send(403, "text/plain", "Forbidden");
+          break;
+      }
+
+      httpRequestProcessed = true;
+      return;
     }
-    
+
     if (server.hasArg("ota") && server.arg("ota")== "") {
       String result = F("<h4>OTA</h4>");
       result += flashForm();
@@ -360,15 +395,39 @@ void httpHandleDevices() {
 #ifdef _DEBUG_TIMING
       unsigned long sendStart = micros();
 #endif
-      // scheduler
       String html = F("<table><tr><th>Name</th><th>Type</th></tr>");
-      html += F("</table>");
-      message += htmlFieldSet(html, "Schedules");
-      // devices
-      html = F("<table><tr><th>Name</th><th>Type</th></tr>");
       html += devList;
       html += F("</table>");
       message += htmlFieldSet(html, "Devices");
+
+      server.client().setNoDelay(true);
+      server.send(200, "text/html", htmlBody(message));
+
+#ifdef _DEBUG_TIMING
+      Serial.print("send " + elapTime(sendStart) + " ");
+#endif
+      httpRequestProcessed = true;
+      return;
+    }
+  }
+  
+  server.client().setNoDelay(true);
+  server.send(403, "text/plain", "Forbidden");
+  httpRequestProcessed = true;
+}
+
+void httpHandleSchedules() {
+  Serial.print("httpHandleSchedules: ");
+  String message = "", schedList = "";
+
+  if (server.method() == HTTP_GET) {
+    if (scheduleListCallback != NULL && (schedList = scheduleListCallback()) != "") {
+#ifdef _DEBUG_TIMING
+      unsigned long sendStart = micros();
+#endif
+      // schedules
+      message += htmlFieldSet(schedList, "Schedules");
+      message += F("<a class=\"dc\" id=\"schedule#add\">Add</a>");
 
       server.client().setNoDelay(true);
       server.send(200, "text/html", htmlBody(message));
@@ -403,7 +462,7 @@ void httpHandleDeviceListJss() {
   String script = F("function windowClick(e){if(e.target.className==\"dc\"&&e.target.id){configDevice(e.target.id);}}function configDevice(id){modDlg(true,false,id);}function modDlg(open,save,id){var md=document.getElementById('mD');if(save){var form=document.getElementById('submitForm');if(form){form.submit();return;}form=document.getElementById('configForm');if(form){var aStr=form.action;var idx=aStr.indexOf('?');var url=aStr.substr(0, idx + 1);var params='';var elem;var parse;aStr=aStr.substr(idx + 1);while(1){\nidx=aStr.indexOf('&');if(idx>0)parse=aStr.substr(0, idx);else parse=aStr;if (parse.substr(parse.length-1)!='='){params+=parse+'&';}else{elem=document.getElementsByName(parse.substr(0,parse.length-1));if(elem && elem[0])params+=parse+elem[0].value+'&';}if(idx>0) aStr=aStr.substr(idx+1); else break;}\ntry{var xmlHttp=new XMLHttpRequest();xmlHttp.open('POST',url+params,false);");
   script += F("xmlHttp.send(null);\nif(xmlHttp.status!=200){alert('Fehler: '+xmlHttp.statusText);return;}}catch(err){\nalert('Fehler: '+err.message);return;}}}if(open){try{var url='/config?ChipID=");
   script += getChipID();
-  script += F("&action=form';\nif(id=='mqtt'||id=='wifi'||id=='ota')url+='&'+id+'=';else url+='&deviceID='+id;\nvar xmlHttp=new XMLHttpRequest(); xmlHttp.open('POST',url,false);xmlHttp.send(null);\nif(xmlHttp.status != 200){alert('Fehler: '+xmlHttp.statusText);return;}document.getElementById('mDCC').innerHTML=xmlHttp.responseText;}catch(err){alert('Fehler: '+err.message);return;}} md.style.visibility = (open ? 'visible' : 'hidden'); if (!open) { document.getElementById('mDCC').innerHTML = '';}}");
+  script += F("&action=form';\nif(id.indexOf('schedule#')==0)url+='&schedule='+id.substr(9);\nelse if(id=='mqtt'||id=='wifi'||id=='ota')url+='&'+id+'=';\nelse url+='&deviceID='+id;\nvar xmlHttp=new XMLHttpRequest(); xmlHttp.open('POST',url,false);xmlHttp.send(null);\nif(xmlHttp.status != 200){alert('Fehler: '+xmlHttp.statusText);return;}document.getElementById('mDCC').innerHTML=xmlHttp.responseText;}catch(err){alert('Fehler: '+err.message);return;}} md.style.visibility = (open ? 'visible' : 'hidden'); if (!open) { document.getElementById('mDCC').innerHTML = '';}}");
   server.send(200, "text/javascript", script);
   httpRequestProcessed = true;
 }
