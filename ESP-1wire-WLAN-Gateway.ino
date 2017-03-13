@@ -32,10 +32,16 @@ bool httpRequestProcessed     = false;
 #define PROGNAME "Esp1wire"
 #define PROGVERS "0.1"
 
+//#define _MQTT_SUPPORT
+
 #include "EspConfig.h"
 #include "Esp1wire.h"
 
 Esp1wire esp1wire;
+Esp1wire::Scheduler scheduler;
+
+// global config object
+EspConfig espConfig(PROGNAME);
 
 #define _MQTT_SUPPORT
 
@@ -50,10 +56,11 @@ Esp1wire esp1wire;
 
 //#define PFANNEX
 
-// global config object
-EspConfig espConfig(PROGNAME);
-
-unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0, lastAlarmAll = 0;
+// prototypes
+void alarmSearch(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
+void readTemperatures(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
+void readBatteries(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
+void readCounter(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 
 void setup() {
   Serial.begin(115200);
@@ -118,6 +125,16 @@ void setup() {
   // deviceConfig handler
   registerDeviceConfigCallback(handleDeviceConfig);
   registerDeviceListCallback(handleDeviceList);
+  // scheduleConfig handler
+  registerScheduleConfigCallback(handleScheduleConfig);
+  registerScheduleListCallback(handleScheduleList);
+
+  // scheduler
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleAlarmSearch, alarmSearch);
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleRequestTemperatues, readTemperatures);
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleRequestBatteries, readBatteries);
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleReadCounter, readCounter);
+  scheduler.loadSchedules();
   
   printHeapFree();
 
@@ -131,29 +148,8 @@ void loop() {
   loopEspMqtt();
 #endif
 
-  // read alarm
-  if ((lastAlarm + 5000) < millis()) {
-    alarmSearch();
-    lastAlarm = millis();
-  }
-  
-  // read counter
-  if ((lastCounter + 60000) < millis()) {
-    readCounter();
-    lastCounter = millis();
-  }
-  
-  // read temp
-  if ((lastTemp + 60000) < millis()) {
-    readTemperatures();
-    lastTemp = millis();
-  }
-
-  // read batt
-  if ((lastBatt + 30000) < millis()) {
-    readBatteries();
-    lastBatt = millis();
-  }
+  // scheduler
+  scheduler.runSchedules();
 
   // handle wifi
   loopEspWifi();
@@ -169,7 +165,7 @@ void loop() {
 #endif
 }
 
-void alarmSearch() {
+void alarmSearch(Esp1wire::DeviceType filter) {
   // add parameter Esp1wire::DeviceTypeSwitch
   Esp1wire::AlarmFilter alarmFilter = esp1wire.alarmSearch(Esp1wire::DeviceTypeSwitch);
   while (alarmFilter.hasNext()) {
@@ -196,7 +192,7 @@ void alarmSearch() {
   }
 }
 
-void readCounter() {
+void readCounter(Esp1wire::DeviceType filter) {
   printHeapFree();
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeCounter);
   while (deviceFilter.hasNext()) {
@@ -211,7 +207,7 @@ void readCounter() {
   }
 }
 
-void readTemperatures() {
+void readTemperatures(Esp1wire::DeviceType filter) {
   printHeapFree();
 
   // calculate temperatures
@@ -235,7 +231,7 @@ void readTemperatures() {
   }
 }
 
-void readBatteries() {
+void readBatteries(Esp1wire::DeviceType filter) {
   printHeapFree();
 
   // read
@@ -292,7 +288,7 @@ String getDictionary() {
   return result;
 }
 
-String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String deviceID) {
+String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
   String result = "";
   String reqAction = server->arg("action"), deviceID = server->arg("deviceID");
   
@@ -307,8 +303,10 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
     ;
 
   // no match
-  if (device == NULL || device->getOneWireDeviceID() != deviceID)
-    return result;
+  if (device == NULL || device->getOneWireDeviceID() != deviceID) {
+    *resultCode = 404;
+    return "Not Found";
+  }
 
 //#ifdef _DEBUG_TIMING
 //    unsigned long formStart = micros();
@@ -333,11 +331,14 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
     
         html += htmlLabel(F("minTemp"), F("min. temperature: "));
         html += htmlInput(F("minTemp"), F("number"), minStr, 0, "-55", "125") + htmlNewLine();
+        action += F("&minTemp=");
         html += htmlLabel(F("maxTemp"), F("max. temperature: "));
         html += htmlInput(F("maxTemp"), F("number"), maxStr, 0, "-55", "125");
+        action += F("&maxTemp=");
         html = htmlFieldSet(html, F("ConditionalSearch"));
         html += htmlLabel(F("customName"), F("custom name: "));
         html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+        action += F("&customName=");
       }
     }
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
@@ -347,30 +348,93 @@ String handleDeviceConfig(ESP8266WebServer *server) { //String reqAction, String
       String options = htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityLow), F("LOW"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityLow);
       options += htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh), F("HIGH"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh);
       html += htmlSelect(F("polarity"), options) + htmlNewLine();
+      action += F("&polarity=");
       html += htmlLabel(F("sourceselect"), F("SourceSelect: "));
       options = htmlOption(String(Esp1wire::SwitchDevice::SourceSelectActivityLatch), F("Activity Latch"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectActivityLatch);
       options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop), F("Channel FlipFlop"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop);
       options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectPIOStatus), F("PIO Status"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectPIOStatus);
       html += htmlSelect(F("sourceselect"), options) + htmlNewLine();
+      action += F("&sourceselect=");
       html += htmlLabel(F("channelselect"), F("ChannelSelect: "));
       options = htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectDisabled), F("Disabled"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectDisabled);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectA), F("A"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectA);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectB), F("B"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectB);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectBoth), F("Both"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectBoth);
       html += htmlSelect(F("channelselect"), options) + htmlNewLine();
+      action += F("&channelselect=");
       html += htmlLabel(F("channelflipflop"), F("ChannelFlipFlop: "));
       options = htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopA), F("A"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopA);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopB), F("B"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopB);
       options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopBoth), F("Both"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopBoth);
       html += htmlSelect(F("channelflipflop"), options);
+      action += F("&channelflipflop=");
       html = htmlFieldSet(html, F("ConditionalSearch"));
       html += htmlLabel(F("customName"), F("custom name: "));
       html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+      action += F("&customName=");
     }
 
     if (html != "") {
+      *resultCode = 200;
       html = "<h4>" + device->getName() + " (" + deviceID + ")" + "</h4>" + html;
-      result = htmlForm(html, action, "post", "", "");
+      result = htmlForm(html, action, "post", "configForm", "", "");
+    }
+  }
+
+  if (reqAction == "submit") {
+    // TemperatureDevice
+    if (device->getDeviceType() == Esp1wire::DeviceTypeTemperature) {
+      int8_t minTemp = server->arg("minTemp").toInt(), maxTemp = server->arg("maxTemp").toInt();
+
+      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+      if (minTemp != 0 && maxTemp != 0 && minTemp < maxTemp)
+        devConf.setValue("conditionalSearch", String(minTemp) + "," + String(maxTemp));
+      if (server->arg("customName") != "")
+        devConf.setValue("customName", server->arg("customName"));
+      else
+        devConf.unsetValue("customName");
+
+      if (devConf.hasChanged()) {
+        devConf.saveToFile();
+        ((Esp1wire::TemperatureDevice*)device)->readConfig();
+      }
+
+      *resultCode = 200;
+      result = "ok";
+    }
+
+    // SwitchDevice
+    if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
+      int8_t polarity = server->arg("polarity").toInt() & 0x01;
+      int8_t sourceselect = server->arg("sourceselect").toInt() & 0x06;
+      int8_t channelselect = server->arg("channelselect").toInt() & 0x18;
+      int8_t channelflipflop = server->arg("channelflipflop").toInt() & 0x60;
+
+      switch(sourceselect) {
+        case Esp1wire::SwitchDevice::SourceSelectActivityLatch:
+        case Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop:
+        case Esp1wire::SwitchDevice::SourceSelectPIOStatus:
+          break;
+        default:
+          return ""; // SourceSelect: invalid value report Error
+          break;
+      }
+      
+      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+      devConf.setValue("conditionalSearch", String(channelflipflop | channelselect | sourceselect | polarity));
+
+      if (server->arg("customName") != "")
+        devConf.setValue("customName", server->arg("customName"));
+      else
+        devConf.unsetValue("customName");
+
+      if (devConf.hasChanged()) {
+        devConf.saveToFile();
+        ((Esp1wire::SwitchDevice*)device)->readConfig();
+      }
+
+      *resultCode = 200;
+      result = "ok";
     }
   }
 //#ifdef _DEBUG_TIMING
@@ -389,7 +453,7 @@ String handleDeviceList() {
   while (deviceFilter.hasNext()) {
     device = deviceFilter.getNextDevice();
 
-    result += F("\n<tr><td>");
+    result += F("<tr><td>");
     result += device->getOneWireDeviceID();
     result += F("</td><td>");
     result += device->getName();
@@ -402,6 +466,92 @@ String handleDeviceList() {
     }
     result += F("</td></tr>");
   }
+
+  return result;
+}
+
+String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
+  uint16_t interval;
+  Esp1wire::Scheduler::ScheduleAction action;
+  Esp1wire::DeviceType filter;
+
+  String schedule = server->arg("schedule"), result = "";
+
+  if (server->arg("action") == "form") {
+    Serial.println("handleScheduleConfig: form");
+    String actStr = F("/config?ChipID=");
+    actStr += getChipID();
+    actStr += F("&schedule=");
+    actStr += schedule;
+    actStr += F("&action=submit");
+  
+    bool useValues = (schedule != "add" && scheduler.getSchedule(schedule.toInt(), &interval, &action, &filter));
+  
+    result = htmlLabel(F("interval"), F("Interval"));
+    result += htmlInput(F("interval"), F("number"), String(useValues ? String(interval) : ""), 0, F("1"), F("3600")) + htmlNewLine();
+    result +=  htmlLabel(F("schedAction"), F("Action"));
+    String options = htmlOption(String(Esp1wire::Scheduler::scheduleAlarmSearch), F("AlarmSearch"), (useValues && action == Esp1wire::Scheduler::scheduleAlarmSearch));
+    options += htmlOption(String(Esp1wire::Scheduler::scheduleRequestTemperatues), F("RequestTemperatues"), (useValues && action == Esp1wire::Scheduler::scheduleRequestTemperatues));
+    options += htmlOption(String(Esp1wire::Scheduler::scheduleRequestBatteries), F("RequestBatteries"), (useValues && action == Esp1wire::Scheduler::scheduleRequestBatteries));
+    options += htmlOption(String(Esp1wire::Scheduler::scheduleReadCounter), F("ReadCounter"), (useValues && action == Esp1wire::Scheduler::scheduleReadCounter));
+    if (useValues) // aka change existing
+      options += htmlOption(String(0xFF), F("Disable"), false);
+    result += htmlSelect(F("schedAction"), options) + htmlNewLine();
+    result += htmlLabel(F("filter"), F("Filter"));
+    options = htmlOption(String(Esp1wire::DeviceTypeAll), F("None"), (useValues && filter == Esp1wire::DeviceTypeAll));
+    options += htmlOption(String(Esp1wire::DeviceTypeSwitch), F("DeviceTypeSwitch"), (useValues && filter == Esp1wire::DeviceTypeSwitch));
+    result += htmlSelect(F("filter"), options) + htmlNewLine();
+    result = "<h4>Schedule</h4>" + htmlForm(result, actStr, F("post"), F("submitForm"), F(""), F("")); 
+      
+    *resultCode = 200;
+  }
+
+  if (server->arg("action") == "submit") {
+    Serial.print("handleScheduleConfig: submit ");
+    *resultCode = 303;
+  }
+  
+  return result;  
+}
+
+String handleScheduleList() {
+  uint16_t interval;
+  Esp1wire::Scheduler::ScheduleAction action;
+  Esp1wire::DeviceType filter;
+  
+  String result = F("<table><tr><th>Gap</th><th>Action</th><th>Filter</th><th></th><th></th></tr>");
+  for (uint8_t idx=0; idx<scheduler.getSchedulesCount(); idx++) {
+    if (scheduler.getSchedule(idx, &interval, &action, &filter)) {
+      result += F("<tr><td>");
+      result += String(interval);
+      result += F("</td><td>");
+      switch (action) {
+        case Esp1wire::Scheduler::scheduleRequestTemperatues:
+          result += F("RequestTemperatues</td><td>");
+          break;
+        case Esp1wire::Scheduler::scheduleRequestBatteries:
+          result += F("RequestBatteries</td><td>");
+          break;
+        case Esp1wire::Scheduler::scheduleReadCounter:
+          result += F("ReadCounter</td><td>");
+          break;
+        case Esp1wire::Scheduler::scheduleAlarmSearch:
+          result += F("AlarmSearch</td><td>");
+          switch (filter) {
+            case Esp1wire::DeviceTypeSwitch:
+              result += F("DeviceTypeSwitch");
+              break;
+          }
+          break;
+      }
+      result += F("</td><td><a id=\"schedule#");
+      result += String(idx);
+      result += F("\" class=\"dc\">...</a>");
+      result += F("</td></tr>");
+    }
+  }
+
+  result += F("</table>");
 
   return result;
 }

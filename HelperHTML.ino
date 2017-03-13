@@ -15,16 +15,21 @@
 #define idField          F(" id=")
 #define classField       F(" class=")
 
+// prototypes
+String htmlForm(String html, String pAction, String pMethod, String pID="", String pEnctype="", String pLegend="");
+String htmlInput(String pName, String pType, String pValue, int pMaxLength=0, String pMinNumber="", String pMaxNumber="");
+String htmlFieldSet(String pHtml, String pLegend="");
+String htmlOption(String pValue, String pText, bool pSelected=false);
+
 String htmlBody(String html) {
-  String doc = F("<html><body><style>label {width: 4em; text-align:left; display: inline-block;} input[type=text] { width: 20em; margin-bottom: 2px;} </style><center><div style=\"width: 40em;\">");
+  String doc = F("<!DOCTYPE html><html lang=\"de\"><body>");
+  doc += F("<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"/static/deviceList.css\">\n<script type=\"text/javascript\" src=\"/static/deviceList.js\"></script>\n</head>");
+  doc += F("<body onclick=\"javascript:windowClick(event)\"><center><div style=\"width: 30em;\">");
   doc += "<h1>"; doc += PROGNAME; doc += " v"; doc += PROGVERS; doc += "@" + getChipID() + "</h1>";
-  doc += wifiForm();
-#ifdef _MQTT_SUPPORT
-  doc += mqttForm();
-#endif
-  doc += flashForm();
   html.replace("\n", "<br>");
   doc += html;
+  // dialog crap
+  doc += F("<div id=\"mD\"><center><div id=\"mDC\"><p id=\"mDCC\"></p><p id=\"mDCB\"><a class=\"dc\" onclick=\"javascript:modDlg(false, true)\">Save</a><a class=\"dc\" onclick=\"javascript:modDlg(false)\">Close</a></p></div></center></div>");
   doc += F("</div></center></body></html>");
 
   return doc;
@@ -35,36 +40,32 @@ String wifiForm() {
   
   String action = F("/config?ChipID=");
   action += getChipID();
-  action += F("&wifi=submit");
+  action += F("&wifi=submit&ssid=&password=");
 
   String html = htmlLabel("ssid", "ssid: ");
-  html += htmlInput("ssid", "",  WiFi.SSID(), sizeof(current_conf.ssid), "", "") + htmlNewLine();
+  html += htmlInput("ssid", "",  WiFi.SSID(), sizeof(current_conf.ssid)) + htmlNewLine();
   html += htmlLabel("password", "psk: ");
-  html += htmlInput("password", "",  "", sizeof(current_conf.password), "", "") + htmlNewLine();
-  html += htmlButton("submit", "action", "setup", "Setup");
-  html += htmlButton("submit", "action", "reset", "Reset");
+  html += htmlInput("password", "",  "", sizeof(current_conf.password)) + htmlNewLine();
 
-  return htmlForm(html, action, "post", "", "Wifi");
+  return htmlForm(html, action, "post", "configForm");
 }
 
 #ifdef _MQTT_SUPPORT
 String mqttForm() {
   String action = F("/config?ChipID=");
   action += getChipID();
-  action += F("&mqtt=submit");
+  action += F("&mqtt=submit&server=&port=&user=&password=");
 
   String html = htmlLabel("server", "server: ");
-  html += htmlInput("server", "", espConfig.getValue("mqttServer"), 40, "", "") + htmlNewLine();
+  html += htmlInput("server", "", espConfig.getValue("mqttServer"), 40) + htmlNewLine();
   html += htmlLabel("port", "port: ");
   html += htmlInput("port", "number", espConfig.getValue("mqttPort"), 0, "1", "65535") + htmlNewLine();
   html += htmlLabel("user", "user: ");
-  html += htmlInput("user", "", espConfig.getValue("mqttUser"), 40, "", "") + htmlNewLine();
+  html += htmlInput("user", "", espConfig.getValue("mqttUser"), 40) + htmlNewLine();
   html += htmlLabel("password", "password: ");
-  html += htmlInput("password", "", "", 40, "", "") + htmlNewLine();
-  html += htmlButton("submit", "action", "setup", "Setup");
-  html += htmlButton("submit", "action", "test", "Test");
+  html += htmlInput("password", "", "", 40) + htmlNewLine();
 
-  return htmlForm(html, action, "post", "", "MQTT");
+  return htmlForm(html, action, "post", "configForm");
 }
 #endif  // _MQTT_SUPPORT
 
@@ -74,14 +75,19 @@ String flashForm() {
   action += F(".bin");
 
   String html = htmlLabel("file", "file: ");
-  html += htmlInput("file", "file", "", 0, "", "") + htmlNewLine();
-  html += htmlButton("submit", "action", "flash", "Flash");
+  html += htmlInput("file", "file", "", 0) + htmlNewLine();
 
-  return htmlForm(html, action, "post", "multipart/form-data", "OTA");
+  return htmlForm(html, action, "post", "submitForm", "multipart/form-data");
 }
 
-String htmlForm(String html, String pAction, String pMethod, String pEnctype, String pLegend) {
+String htmlForm(String html, String pAction, String pMethod, String pID, String pEnctype, String pLegend) {
   String result = F("<form");
+  if (pID != "") {
+    result += idField;
+    result += textMark;
+    result += pID;
+    result += textMark;
+  }
   result += actionField;
   result += textMark;
   result += pAction;
