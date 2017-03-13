@@ -43,7 +43,18 @@ Esp1wire::Scheduler scheduler;
 // global config object
 EspConfig espConfig(PROGNAME);
 
-unsigned long lastTemp = 0, lastAlarm = 0, lastCounter = 0, lastBatt = 0, lastAlarmAll = 0;
+#define _MQTT_SUPPORT
+
+#ifdef _MQTT_SUPPORT
+  #define _DEBUG_MQTT
+  #include "WiFiClient.h"
+  #include "PubSubClient.h"
+  #include "EspMqtt.h"
+
+  EspMqtt espMqtt(PROGNAME);
+#endif
+
+//#define PFANNEX
 
 // prototypes
 void alarmSearch(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
@@ -54,15 +65,19 @@ void readCounter(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 void setup() {
   Serial.begin(115200);
   yield();
-
-  Serial.println("\n\n");
   
+  Serial.println("\n\n"); 
+   
   setupEspTools();
   setupEspWifi();
 
   printHeapFree();
 
+#ifdef PFANNEX
+  if (!esp1wire.probeI2C(4, 5) && !esp1wire.probeGPIO(2))
+#else
   if (!esp1wire.probeI2C() && !esp1wire.probeGPIO())
+#endif
     Serial.println("no 1-wire detected!");
   else
     esp1wire.resetSearch();
@@ -129,9 +144,13 @@ void setup() {
 }
 
 void loop() {
+#ifdef _MQTT_SUPPORT
+  loopEspMqtt();
+#endif
+
   // scheduler
   scheduler.runSchedules();
-  
+
   // handle wifi
   loopEspWifi();
 
@@ -139,6 +158,11 @@ void loop() {
   if (Serial.available()) {
     handleSerialPort(Serial.read());
   }
+
+#ifdef _MQTT_SUPPORT
+  // close open connections
+  espMqtt.disconnect();
+#endif
 }
 
 void alarmSearch(Esp1wire::DeviceType filter) {
@@ -198,6 +222,7 @@ void readTemperatures(Esp1wire::DeviceType filter) {
     unsigned long tempStart = micros();
     if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC)) {
       String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
+
       message += SensorDataValue(Temperature, tempC);
       message += SensorDataValue(Device, device->getName());
 
@@ -533,6 +558,11 @@ String handleScheduleList() {
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
   switch (r) {
+#ifdef _MQTT_SUPPORT
+    case 'm':
+      espMqtt.publish(PROGNAME, "uptime: " + uptime(), false);
+      break;
+#endif
 //    case 'p':
 //      esp1wire.probeI2C();
 //      esp1wire.probeGPIO();
@@ -644,6 +674,9 @@ void bmpDataCallback(float temperature, int pressure) {
 void sendMessage(String message) {
   Serial.println(message);  
   sendMultiCast(message);
+#ifdef _MQTT_SUPPORT
+  espMqtt.publish(PROGNAME, message);
+#endif
 }
 
 void sendMessage(String message, unsigned long startTime) {

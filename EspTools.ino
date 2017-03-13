@@ -22,11 +22,27 @@ void blinkLed(byte cnt, byte microseconds) {
   }
 }
 
+//uint8_t EspToolsUptimeWeeks = 0;
+//uint8_t EspToolsUptimeDays = 0;
+
 String uptime() {
   String result = "";
 
   unsigned long uptime = (millis() / 1000);
 
+  unsigned long days = (unsigned long)(uptime / 86400);
+//  if (EspToolsUptimeDays != days) {
+//    EspToolsUptimeDays = days;
+//    if ((days % 7) == 0 && days > 0)
+//      EspToolsUptimeWeeks++;
+//  }
+//  if (EspToolsUptimeWeeks > 0)
+//    result += String(EspToolsUptimeWeeks) + " week(s) ";
+//
+//  unsigned long dayOfWeek = (days % 7);
+//  if (dayOfWeek > 0)
+//    result += String(dayOfWeek) + " day(s) ";
+    
   result += String(uptime / 86400) + " day(s) ";
   uptime %= 86400;
   uint8_t hours = uptime / 3600;

@@ -9,6 +9,7 @@
 
 #ifdef _MQTT_SUPPORT
   #include "EspConfig.h"
+  #include "EspMqtt.h"
 #endif
 
 extern "C" {
@@ -346,11 +347,7 @@ Serial.println("mqtt: " + server.arg("mqtt"));
     
     if (server.arg("mqtt") == "submit") {
       if (server.arg("action") == "test") {
-        espConfig.setValue("mqttServer", server.arg("server"));
-        espConfig.setValue("mqttPort", server.arg("port"));
-        espConfig.setValue("mqttUser", server.arg("user"));
-        espConfig.setValue("mqttPassword", server.arg("password"));
-//        configEspMqtt();
+        espMqtt.testConfig(server.arg("server"), server.arg("port"), server.arg("user"), server.arg("password"));
       } else if (server.arg("action") == "setup") {
         espConfig.saveToFile();
       }

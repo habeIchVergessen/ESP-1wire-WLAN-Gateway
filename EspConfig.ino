@@ -5,9 +5,7 @@
 // class EspConfig
 EspConfig::EspConfig(String appName) {
   mAppName = appName;
-  
   SPIFFS.begin();
-
   if (openRead()) {
     while (configFile.available()) {
       String data = configFile.readStringUntil('\n');
