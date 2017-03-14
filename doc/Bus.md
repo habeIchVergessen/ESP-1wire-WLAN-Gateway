@@ -59,7 +59,8 @@
 | uint16_t | mTemperatureDeviceCount |
 | uint8_t | mStatus |
 
-###inheritance###
+***inheritance***
+
 [class BusIC](./BusIC.md)
 
 [class BusGPIO](./BusGPIO.md)
