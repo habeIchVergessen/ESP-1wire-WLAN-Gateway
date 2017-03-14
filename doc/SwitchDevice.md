@@ -1,14 +1,16 @@
-##class [Esp1wire](./Esp1wire.md)::SwitchDevice : [Device](./Device.md)##
+**class [Esp1wire](./Esp1wire.md)::SwitchDevice : [Device](./Device.md)**
 
-###public###
+***public***
+
 | | method | description |
 | --- | --- | --- |
-| bool | **getChannelInfo([SwitchChannelStatus](#switchchannelstatus) *channelStatus)** | read channel status |
-| bool | **getMemoryStatus([SwitchMemoryStatus](#switchmemorystatus) *memoryStatus)** | read memory status |
+| bool | **getChannelInfo([SwitchChannelStatus](#switchchannelstatus) \*channelStatus)** | read channel status |
+| bool | **getMemoryStatus([SwitchMemoryStatus](#switchmemorystatus) \*memoryStatus)** | read memory status |
 | bool | **setConditionalSearch([ConditionalSearchPolarity](#conditionalsearchpolarity) csPolarity, [ConditionalSearchSourceSelect](#conditionalsearchsourceselect) csSourceSelect, [ConditionalSearchChannelSelect](#conditionalsearchchannelselect) csChannelSelect, [ChannelFlipFlop](#channelflipflop) channelFlipFlop)** | configure conditional search |
-| bool | **resetAlarm([SwitchChannelStatus](#switchchannelstatus) *channelStatus)** | read current status and reset alarm afterwards |
+| bool | **resetAlarm([SwitchChannelStatus](#switchchannelstatus) \*channelStatus)** | read current status and reset alarm afterwards |
 
-###SwitchChannelStatus###
+***SwitchChannelStatus***
+
 | | name | description |
 | --- | --- | --- |
 | uint8_t | noChannels | number of channels |
@@ -20,7 +22,8 @@
 | bool | senseB | value of sense.B |
 | bool | flipFlopQB | value of FlipFlopQ.B |
 
-###SwitchMemoryStatus###
+***SwitchMemoryStatus***
+
 | | name | description |
 | --- | --- | --- |
 | ConditionalSearchPolarity | csPolarity | |
@@ -29,13 +32,15 @@
 | ChannelFlipFlop | channelFlipFlop | |
 | bool | parasite | parasite mode |
 
-###ConditionalSearchPolarity###
+***ConditionalSearchPolarity***
+
 | name | description |
 | --- | --- |
 | ConditionalSearchPolarityLow  | answer on low value |
 | ConditionalSearchPolarityHigh | answer on high value |
       
-###ConditionalSearchChannelSelect###
+***ConditionalSearchChannelSelect***
+
 | name | description |
 | --- | --- |
 | ChannelSelectDisabled | disable conditional search |
@@ -43,14 +48,16 @@
 | ChannelSelectB | answer conditional search for channel B |
 | ChannelSelectBoth | answer conditional search for both channels |
 
-###ConditionalSearchSourceSelect###
+***ConditionalSearchSourceSelect***
+
 | name | description |
 | --- | --- |
 | SourceSelectActivityLatch | answer conditional search for any activity |
 | SourceSelectChannelFlipFlop | not tested yet |
 | SourceSelectPIOStatus | not tested yet |
 
-###ChannelFlipFlop###
+***ChannelFlipFlop***
+
 | name | description |
 | --- | --- |
 | ChannelFlipFlopA | enable pullup on channel A |
