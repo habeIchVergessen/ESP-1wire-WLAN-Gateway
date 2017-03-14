@@ -1,6 +1,7 @@
 **class [Esp1wire](./Esp1wire.md)::Device**
 
-###public###
+***public***
+
 | | method | description |
 | --- | --- | --- |
 | String | **getName()** | user friendly device type |
@@ -10,15 +11,17 @@
 | bool | **getIgnoreAlarmSearch()** | alarm search suppress setting |
 | void | **setIgnoreAlarmSearch(bool ignore)** | modify alarm search suppress setting |
 
-###protected###
+***protected***
+
 | | member |
 | --- | --- |
 |uint8_t | mAddress[8] |
 | uint8_t | mStatus = 0 |
-| Bus | *mBus |
+| Bus | \*mBus |
 | DeviceType | mDeviceType |
 
-###inheritance###
+***inheritance***
+
 [class BatteryDevice](./BatteryDevice.md)
 
 [class CounterDevice](./CounterDevice.md)
