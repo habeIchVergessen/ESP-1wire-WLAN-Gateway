@@ -1,7 +1,8 @@
-##class Esp1wire##
+**class Esp1wire**
 
-###public###
-|| method | description |
+***public***
+
+| | method | description |
 | --- | --- | --- |
 | bool | **probeI2C(uint8_t sda, uint8_t scl)** | scan i2c bus for DS2482-100/800 bus master chips |
 | | sda, scl | gpio pin for SDA, SCL (default SDA, SCL) |
@@ -15,7 +16,8 @@
 | [TemperatureDeviceFilter](./TemperatureDeviceFilter.md) | **getTemperatureDeviceFilter()** | temperature device list iterator |
 | uint8_t | **getBusCount()** | amount of detected 1-wire busses |
 
-###DeviceType###
+***DeviceType***
+
 | name | description |
 | --- | --- |
 | DeviceTypeUnsupported | all not implemeted devices |
@@ -25,7 +27,8 @@
 | DeviceTypeBattery | DS2438 (family code 0x26) |
 | DeviceTypeAll | all devices |
 
-###BusmasterType###
+***BusmasterType***
+
 | name | description |
 | --- | --- |
 | DS2482_100 | DS2482-100 |
@@ -41,7 +44,8 @@
 
 [class TemperatureDevice](./TemperatureDevice.md) : Device
 
-###protected###
+***protected***
+
 [class Busmaster](./Busmaster.md)
 
 [class Bus](./Bus.md)
