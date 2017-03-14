@@ -1635,15 +1635,18 @@ void Esp1wire::Scheduler::runSchedules() {
   ScheduleList *curr = first;
 
   unsigned long currTime = millis();
-  
+
+  uint8_t idx = 0;
   while (curr != NULL) {
     if (currTime - curr->lastExecution > curr->interval) {
+      Serial.println("runSchedules: #" + String(idx));
       if (schedulerCallbacks[curr->action] != NULL)
         schedulerCallbacks[curr->action](curr->filter);
       curr->lastExecution = millis();
     }
 
     curr = curr->next;
+    idx++;
   }
 }
 
@@ -1693,5 +1696,57 @@ bool Esp1wire::Scheduler::getSchedule(uint8_t idx, uint16_t *interval, ScheduleA
   }
 
   return result;
+}
+
+void Esp1wire::Scheduler::updateSchedule(uint8_t idx, uint16_t interval, ScheduleAction action, DeviceType filter) {
+  if (idx >= mSchedulesCount)
+    return;
+    
+  ScheduleList *curr = first;
+  uint8_t cnt = 0;
+  
+  while (curr != NULL) {
+    if (cnt != idx) {
+      curr = curr->next;
+      cnt++;
+      continue;
+    }
+
+    curr->interval = interval * 1000;
+    curr->action = action;
+    curr->filter = filter;
+    break;
+  }
+}
+
+void Esp1wire::Scheduler::removeSchedule(uint8_t idx) {
+  if (idx == 0) {
+    ScheduleList *curr = first;
+    if (first == last)
+      first = last = NULL;
+    else
+      first = first->next;
+    delete (curr);
+  } else {
+    ScheduleList *curr = first, *priv = first;
+    uint8_t cnt = 0;
+    
+    while (curr != NULL) {
+      if (cnt != idx) {
+        if (curr != priv)
+          priv = curr;
+        curr = curr->next;
+        cnt++;
+        continue;
+      }
+  
+      priv->next = curr->next;
+      if (curr == last)
+        last = priv;
+      delete (curr);
+      mSchedulesCount--;
+      break;
+    }
+  }
 }
 
