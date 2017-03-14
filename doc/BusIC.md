@@ -8,7 +8,7 @@
 | String | **getBusInformation()** | user friendly bus information |
 | bool | **reset()** | send reset to 1-wire bus |
 | bool | **resetSearch()** | perform a normal search on 1-wire bus |
-| bool | **alarmSearch(AlarmFilter *alarmFilter, DeviceType targetSearch)** | perform a conditional search on 1-wire bus |
+| bool | **alarmSearch(AlarmFilter \*alarmFilter, DeviceType targetSearch)** | perform a conditional search on 1-wire bus |
 | void | **wireResetSearch()** | OneWire\|DS2482 wireResetSearch |
 | void | **wireSelect(uint8_t \*address)** | OneWire\|DS2482 wireSelect |
 | | address | search result device address |
