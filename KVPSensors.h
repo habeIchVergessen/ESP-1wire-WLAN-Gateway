@@ -13,24 +13,25 @@
 #define DiscName				"DISCOVERY"
 #define ProtName				"VALUES"
 
-#define Header(type)							"OK" KEY_DELIMITER type KEY_DELIMITER
-#define DiagnosticHeader(type)					(String)Header(DiagName) + type + KEY_DELIMITER
-#define DiscoveryHeader(type, id) 				(String)Header(DiscName) + type + KEY_DELIMITER + id + KEY_DELIMITER
-#define SensorName(id)							#id
-#define SensorDataHeader(type, id) 				(String)Header(ProtName) + type + KEY_DELIMITER + id + KEY_DELIMITER
+#define Header(type)							              "OK" KEY_DELIMITER type KEY_DELIMITER
+#define DiagnosticHeader(type)					        (String)Header(DiagName) + type + KEY_DELIMITER
+#define DiscoveryHeader(type, id) 				      (String)Header(DiscName) + type + KEY_DELIMITER + id + KEY_DELIMITER
+#define SensorName(id)							            (String)#id
+#define SensorNamePort(id, port)                (String)#id + PORT_DELIMITER + port
+#define SensorDataHeader(type, id) 				      (String)Header(ProtName) + type + KEY_DELIMITER + id + KEY_DELIMITER
 
 // enable short key names
 #ifndef KVP_LONG_KEY_FORMAT
 
-#define DictionaryHeader 						"INIT DICTIONARY" KEY_DELIMITER
-#define DictionaryValue(id)						(String)id + KEY_VALUE_DELIMITER + #id + VALUE_DELIMITER
-#define DictionaryValuePort(id, port)			(String)id + PORT_DELIMITER + port + KEY_VALUE_DELIMITER + #id + PORT_DELIMITER + port + VALUE_DELIMITER
-#define SensorDataValue(key, value) 			(String)key + KEY_VALUE_DELIMITER + value + VALUE_DELIMITER
+#define DictionaryHeader 						            "INIT DICTIONARY" KEY_DELIMITER
+#define DictionaryValue(id)						          (String)id + KEY_VALUE_DELIMITER + #id + VALUE_DELIMITER
+#define DictionaryValuePort(id, port)			      (String)id + PORT_DELIMITER + port + KEY_VALUE_DELIMITER + #id + PORT_DELIMITER + port + VALUE_DELIMITER
+#define SensorDataValue(key, value) 			      (String)key + KEY_VALUE_DELIMITER + value + VALUE_DELIMITER
 #define SensorDataValuePort(key, port, value) 	(String)key + PORT_DELIMITER + port + KEY_VALUE_DELIMITER + value + VALUE_DELIMITER
 
 #else
 
-#define SensorDataValue(key, value) 			(String)(#key) + KEY_VALUE_DELIMITER + value + VALUE_DELIMITER
+#define SensorDataValue(key, value) 			      (String)(#key) + KEY_VALUE_DELIMITER + value + VALUE_DELIMITER
 #define SensorDataValuePort(key, port, value) 	(String)(#key) + PORT_DELIMITER + port + KEY_VALUE_DELIMITER + value + VALUE_DELIMITER
 
 #endif

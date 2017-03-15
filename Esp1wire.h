@@ -80,6 +80,7 @@ class Esp1wire {
       , statusParasiteOn    = (byte)0x02
       , statusResolution    = (byte)0x0C  // 2 bits
       , statusAlarm         = (byte)0x10
+      , statusBattVdd       = (byte)0x20  // read VDD too
     };
 
     // class Busmaster
@@ -458,6 +459,10 @@ class Esp1wire {
       bool                    requestTemperatureC(float *temperature);
       bool                    requestVDD(float *voltage, float *current, float *capacity, float resistorSens=0.025);
       bool                    requestVAD(float *voltage, float *current, float *capacity, float resistorSens=0.025);
+      bool                    getRequestVdd() { return (mStatus & statusBattVdd); };
+      void                    setRequestVdd(bool vdd) { if (vdd) mStatus |= statusBattVdd; else mStatus &= ~statusBattVdd; };
+
+      void                    readConfig();
 
     protected:
       enum      InputSelect {
@@ -536,6 +541,7 @@ class Esp1wire {
       , scheduleRequestBatteries    = (byte)0x01
       , scheduleReadCounter         = (byte)0x02
       , scheduleAlarmSearch         = (byte)0x03
+      , scheduleResetSearch         = (byte)0x04
       };
 
       typedef void (*SchedulerCallback) (DeviceType filter);
@@ -561,7 +567,7 @@ class Esp1wire {
       };
 
       ScheduleList      *first = NULL, *last = NULL;
-      SchedulerCallback schedulerCallbacks[4] = { NULL, NULL, NULL, NULL };
+      SchedulerCallback schedulerCallbacks[5] = { NULL, NULL, NULL, NULL, NULL };
       uint8_t           mSchedulesCount = 0;
     };
     

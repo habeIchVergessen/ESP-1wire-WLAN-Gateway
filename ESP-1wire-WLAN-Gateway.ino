@@ -43,41 +43,25 @@ Esp1wire::Scheduler scheduler;
 // global config object
 EspConfig espConfig(PROGNAME);
 
-#define _MQTT_SUPPORT
-
-#ifdef _MQTT_SUPPORT
-  #define _DEBUG_MQTT
-  #include "WiFiClient.h"
-  #include "PubSubClient.h"
-  #include "EspMqtt.h"
-
-  EspMqtt espMqtt(PROGNAME);
-#endif
-
-//#define PFANNEX
-
 // prototypes
 void alarmSearch(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 void readTemperatures(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 void readBatteries(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 void readCounter(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
+void resetSearch(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 
 void setup() {
   Serial.begin(115200);
   yield();
+
+  Serial.println("\n\n");
   
-  Serial.println("\n\n"); 
-   
   setupEspTools();
   setupEspWifi();
 
   printHeapFree();
 
-#ifdef PFANNEX
-  if (!esp1wire.probeI2C(4, 5) && !esp1wire.probeGPIO(2))
-#else
   if (!esp1wire.probeI2C() && !esp1wire.probeGPIO())
-#endif
     Serial.println("no 1-wire detected!");
   else
     esp1wire.resetSearch();
@@ -119,6 +103,10 @@ void setup() {
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
       ((Esp1wire::SwitchDevice*)device)->readConfig();
     }
+    // battery devices
+    if (device->getDeviceType() == Esp1wire::DeviceTypeBattery) {
+      ((Esp1wire::BatteryDevice*)device)->readConfig();
+    }
     Serial.println();
   }
 
@@ -134,8 +122,11 @@ void setup() {
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleRequestTemperatues, readTemperatures);
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleRequestBatteries, readBatteries);
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleReadCounter, readCounter);
+  scheduler.registerCallback(Esp1wire::Scheduler::scheduleResetSearch, resetSearch);
   scheduler.loadSchedules();
-  
+
+  Serial.println("SensorName:     " + SensorName(Counter));
+  Serial.println("SensorNamePort: " + SensorNamePort(Counter, '1'));
   printHeapFree();
 
 #ifdef _DEBUG_TEST_DATA
@@ -144,13 +135,9 @@ void setup() {
 }
 
 void loop() {
-#ifdef _MQTT_SUPPORT
-  loopEspMqtt();
-#endif
-
   // scheduler
   scheduler.runSchedules();
-
+  
   // handle wifi
   loopEspWifi();
 
@@ -158,11 +145,6 @@ void loop() {
   if (Serial.available()) {
     handleSerialPort(Serial.read());
   }
-
-#ifdef _MQTT_SUPPORT
-  // close open connections
-  espMqtt.disconnect();
-#endif
 }
 
 void alarmSearch(Esp1wire::DeviceType filter) {
@@ -210,12 +192,16 @@ void readCounter(Esp1wire::DeviceType filter) {
   while (deviceFilter.hasNext()) {
     Esp1wire::Device *device = deviceFilter.getNextDevice();
 
-    Serial.print(device->getOneWireDeviceID() + " ");
     uint32_t c1, c2;
     unsigned long tempStart = micros();
-    if (((Esp1wire::CounterDevice*)device)->getCounter(&c1, &c2))
-      Serial.print("counter " + String(c1) + " " + String(c2) + " " + elapTime(tempStart));
-    Serial.println();
+    if (((Esp1wire::CounterDevice*)device)->getCounter(&c1, &c2)) {
+      String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
+      message += SensorDataValuePort(Counter, '1', c1);
+      message += SensorDataValuePort(Counter, '2', c2);
+      message += SensorDataValue(Device, device->getName());
+
+      sendMessage(message, tempStart);
+    }
   }
 }
 
@@ -234,7 +220,6 @@ void readTemperatures(Esp1wire::DeviceType filter) {
     unsigned long tempStart = micros();
     if (((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC)) {
       String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
-
       message += SensorDataValue(Temperature, tempC);
       message += SensorDataValue(Device, device->getName());
 
@@ -251,16 +236,29 @@ void readBatteries(Esp1wire::DeviceType filter) {
   while (deviceFilter.hasNext()) {
     Esp1wire::BatteryDevice *device = (Esp1wire::BatteryDevice*)deviceFilter.getNextDevice();
 
-    Serial.print(device->getOneWireDeviceID());
+    String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
     float voltage, current, capacity, temperature;
     unsigned long battStart = micros();
-    if (device->requestVDD(&voltage, &current, &capacity))
-      Serial.print(" voltage vdd " + String(voltage, 3) + " current " + String(current, 3) + " capacity " + String(capacity, 3) + " " + elapTime(battStart));
-    battStart = micros();
-    if (device->requestVAD(&voltage, &current, &capacity))
-      Serial.print(" voltage vad " + String(voltage, 3) + " current " + String(current, 3) + " capacity " + String(capacity, 3) + " " + elapTime(battStart));
-    Serial.println();
+    if (device->requestVAD(&voltage, &current, &capacity)) {
+      message += SensorDataValuePort(Voltage, "VAD", String(voltage, 3));
+      message += SensorDataValuePort(Current, "VAD", String(current, 3));
+      message += SensorDataValuePort(Capacity, "VAD", String(capacity, 3));
+    }
+    // requestVdd depends on device config (default vad only)
+//    if (device->getRequestVdd() && device->requestVDD(&voltage, &current, &capacity)) {
+    if (device->requestVDD(&voltage, &current, &capacity)) {
+      message += SensorDataValuePort(Voltage, "VDD", String(voltage, 3));
+      message += SensorDataValuePort(Current, "VDD", String(current, 3));
+      message += SensorDataValuePort(Capacity, "VDD", String(capacity, 3));
+    }
+    message += SensorDataValue(Device, device->getName());
+
+    sendMessage(message, battStart);
   }
+}
+
+void resetSearch(Esp1wire::DeviceType filter) {
+  esp1wire.resetSearch();
 }
 
 void listDevices() {
@@ -292,9 +290,12 @@ String getDictionary() {
   DictionaryValuePort(Sense, 'B') +
   DictionaryValuePort(FlipFlopQ, 'A') +
   DictionaryValuePort(FlipFlopQ, 'B') +
-  DictionaryValue(Voltage) +
-  DictionaryValue(Current) +
-  DictionaryValue(Capacity);
+  DictionaryValuePort(Voltage, "VDD") +
+  DictionaryValuePort(Current, "VDD") +
+  DictionaryValuePort(Capacity, "VDD") +
+  DictionaryValuePort(Voltage, "VAD") +
+  DictionaryValuePort(Current, "VAD") +
+  DictionaryValuePort(Capacity, "VAD");
 #endif
 
   return result;
@@ -331,28 +332,34 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
     action += F("&action=submit");
 
     String html = "";
+    // temperature
     if (device->getDeviceType() == Esp1wire::DeviceTypeTemperature) {
       EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
-      String value = devConf.getValue(F("conditionalSearch"));
-      int8_t idx;
+      String value = devConf.getValue(F("conditionalSearch")), minStr, maxStr;
+      int8_t idx, min, max;
       if ((idx = value.indexOf(",")) > 0) {  // min & max
-        int8_t min = value.substring(0, idx).toInt();
-        int8_t max = value.substring(idx + 1, value.length()).toInt();
-        String minStr = (min != 0 || max != 0 ? String(min) : "");
-        String maxStr = (min != 0 || max != 0 ? String(max) : "");
-    
-        html += htmlLabel(F("minTemp"), F("min. temperature: "));
-        html += htmlInput(F("minTemp"), F("number"), minStr, 0, "-55", "125") + htmlNewLine();
-        action += F("&minTemp=");
-        html += htmlLabel(F("maxTemp"), F("max. temperature: "));
-        html += htmlInput(F("maxTemp"), F("number"), maxStr, 0, "-55", "125");
-        action += F("&maxTemp=");
-        html = htmlFieldSet(html, F("ConditionalSearch"));
-        html += htmlLabel(F("customName"), F("custom name: "));
-        html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
-        action += F("&customName=");
+        min = value.substring(0, idx).toInt();
+        max = value.substring(idx + 1, value.length()).toInt();
+        minStr = (min != 0 || max != 0 ? String(min) : "");
+        maxStr = (min != 0 || max != 0 ? String(max) : "");
+      } else {
+        ((Esp1wire::TemperatureDevice*)device)->getAlarmTemperatures(&min, &max);
+        minStr = (min != 0 || max != 0 ? String(min) : "");
+        maxStr = (min != 0 || max != 0 ? String(max) : "");
       }
+    
+      html += htmlLabel(F("minTemp"), F("min. temperature: "));
+      html += htmlInput(F("minTemp"), F("number"), minStr, 0, "-55", "125") + htmlNewLine();
+      action += F("&minTemp=");
+      html += htmlLabel(F("maxTemp"), F("max. temperature: "));
+      html += htmlInput(F("maxTemp"), F("number"), maxStr, 0, "-55", "125");
+      action += F("&maxTemp=");
+      html = htmlFieldSet(html, F("ConditionalSearch"));
+      html += htmlLabel(F("customName"), F("custom name: "));
+      html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+      action += F("&customName=");
     }
+    // switch
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
       EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
       uint8_t curr = devConf.getValue(F("conditionalSearch")).toInt();
@@ -507,6 +514,7 @@ String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
     options += htmlOption(String(Esp1wire::Scheduler::scheduleRequestTemperatues), F("RequestTemperatues"), (useValues && action == Esp1wire::Scheduler::scheduleRequestTemperatues));
     options += htmlOption(String(Esp1wire::Scheduler::scheduleRequestBatteries), F("RequestBatteries"), (useValues && action == Esp1wire::Scheduler::scheduleRequestBatteries));
     options += htmlOption(String(Esp1wire::Scheduler::scheduleReadCounter), F("ReadCounter"), (useValues && action == Esp1wire::Scheduler::scheduleReadCounter));
+    options += htmlOption(String(Esp1wire::Scheduler::scheduleResetSearch), F("ResetSearch"), (useValues && action == Esp1wire::Scheduler::scheduleResetSearch));
     if (useValues) // aka change existing
       options += htmlOption(String(0xFF), F("Disable"), false);
     result += htmlSelect(F("schedAction"), options) + htmlNewLine();
@@ -585,6 +593,9 @@ String handleScheduleList() {
               break;
           }
           break;
+        case Esp1wire::Scheduler::scheduleResetSearch:
+          result += F("ResetSearch</td><td>");
+          break;
       }
       result += F("</td><td><a id=\"schedule#");
       result += String(idx);
@@ -600,11 +611,6 @@ String handleScheduleList() {
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
   switch (r) {
-#ifdef _MQTT_SUPPORT
-    case 'm':
-      espMqtt.publish(PROGNAME, "uptime: " + uptime(), false);
-      break;
-#endif
 //    case 'p':
 //      esp1wire.probeI2C();
 //      esp1wire.probeGPIO();
@@ -716,9 +722,6 @@ void bmpDataCallback(float temperature, int pressure) {
 void sendMessage(String message) {
   Serial.println(message);  
   sendMultiCast(message);
-#ifdef _MQTT_SUPPORT
-  espMqtt.publish(PROGNAME, message);
-#endif
 }
 
 void sendMessage(String message, unsigned long startTime) {
