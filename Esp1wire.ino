@@ -1659,8 +1659,8 @@ void Esp1wire::Scheduler::loadSchedules() {
     Serial.println("scheduler not configured! using defaults");
     scheduler.addSchedule(5, Esp1wire::Scheduler::scheduleAlarmSearch, Esp1wire::DeviceTypeSwitch);
     scheduler.addSchedule(120, Esp1wire::Scheduler::scheduleRequestTemperatues);
-    scheduler.addSchedule(60, Esp1wire::Scheduler::scheduleRequestBatteries);
-    scheduler.addSchedule(60, Esp1wire::Scheduler::scheduleReadCounter);
+    scheduler.addSchedule(120, Esp1wire::Scheduler::scheduleRequestBatteries);
+    scheduler.addSchedule(120, Esp1wire::Scheduler::scheduleReadCounter);
 
     return;
   }
@@ -1727,6 +1727,7 @@ void Esp1wire::Scheduler::removeSchedule(uint8_t idx) {
     else
       first = first->next;
     delete (curr);
+    mSchedulesCount--;
   } else {
     ScheduleList *curr = first, *priv = first;
     uint8_t cnt = 0;
