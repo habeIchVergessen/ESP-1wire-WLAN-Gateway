@@ -16,7 +16,7 @@
 | [TemperatureDeviceFilter](./TemperatureDeviceFilter.md) | **getTemperatureDeviceFilter()** | temperature device list iterator |
 | uint8_t | **getBusCount()** | amount of detected 1-wire busses |
 
-***DeviceType***
+##### DeviceType
 
 | name | description |
 | --- | --- |
@@ -27,7 +27,7 @@
 | DeviceTypeBattery | DS2438 (family code 0x26) |
 | DeviceTypeAll | all devices |
 
-***BusmasterType***
+##### BusmasterType
 
 | name | description |
 | --- | --- |
