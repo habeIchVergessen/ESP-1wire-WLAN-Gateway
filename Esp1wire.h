@@ -547,6 +547,8 @@ class Esp1wire {
       void      loadSchedules();
       uint8_t   getSchedulesCount() { return mSchedulesCount; };
       bool      getSchedule(uint8_t idx, uint16_t *interval, ScheduleAction *action, DeviceType *filter);
+      void      updateSchedule(uint8_t idx, uint16_t interval, ScheduleAction action, DeviceType filter=DeviceTypeAll);
+      void      removeSchedule(uint8_t idx);
       
     protected:
       typedef struct __attribute__((packed)) ScheduleList

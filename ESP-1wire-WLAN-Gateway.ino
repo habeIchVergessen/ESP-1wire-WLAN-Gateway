@@ -167,12 +167,24 @@ void loop() {
 
 void alarmSearch(Esp1wire::DeviceType filter) {
   // add parameter Esp1wire::DeviceTypeSwitch
-  Esp1wire::AlarmFilter alarmFilter = esp1wire.alarmSearch(Esp1wire::DeviceTypeSwitch);
+  Esp1wire::AlarmFilter alarmFilter = esp1wire.alarmSearch(filter);
   while (alarmFilter.hasNext()) {
     Esp1wire::Device *device = alarmFilter.getNextDevice();
 
-    // switch
+    // temperature
     unsigned long tempStart = micros();
+    float tempC;
+    if (device->getDeviceType() == Esp1wire::DeviceTypeTemperature && ((Esp1wire::TemperatureDevice*)device)->readTemperatureC(&tempC)) {
+      String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
+
+      message += SensorDataValue(Temperature, tempC);
+      message += SensorDataValue(Device, device->getName());
+
+      sendMessage(message, tempStart);
+    }
+
+    // switch
+    tempStart = micros();
     Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch && ((Esp1wire::SwitchDevice*)device)->resetAlarm(&channelStatus)) {
       String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
@@ -484,11 +496,12 @@ String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
     actStr += F("&schedule=");
     actStr += schedule;
     actStr += F("&action=submit");
-  
-    bool useValues = (schedule != "add" && scheduler.getSchedule(schedule.toInt(), &interval, &action, &filter));
+
+    bool isNumber = (schedule.length() > 0 && schedule.substring(0, 1) >= "0" && schedule.substring(0, 1) <= "9");
+    bool useValues = (isNumber && scheduler.getSchedule(schedule.toInt(), &interval, &action, &filter));
   
     result = htmlLabel(F("interval"), F("Interval"));
-    result += htmlInput(F("interval"), F("number"), String(useValues ? String(interval) : ""), 0, F("1"), F("3600")) + htmlNewLine();
+    result += htmlInput(F("interval"), F("number"), String(useValues ? String(interval) : "60"), 0, F("1"), F("3600")) + htmlNewLine();
     result +=  htmlLabel(F("schedAction"), F("Action"));
     String options = htmlOption(String(Esp1wire::Scheduler::scheduleAlarmSearch), F("AlarmSearch"), (useValues && action == Esp1wire::Scheduler::scheduleAlarmSearch));
     options += htmlOption(String(Esp1wire::Scheduler::scheduleRequestTemperatues), F("RequestTemperatues"), (useValues && action == Esp1wire::Scheduler::scheduleRequestTemperatues));
@@ -507,7 +520,36 @@ String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
   }
 
   if (server->arg("action") == "submit") {
-    Serial.print("handleScheduleConfig: submit ");
+    String intStr = server->arg("interval");
+    String actStr = server->arg("schedAction");
+    String filtStr = server->arg("filter");
+
+    bool isNumber = (schedule.length() > 0 && schedule.substring(0, 1) >= "0" && schedule.substring(0, 1) <= "9");
+    uint16_t interval = 0;
+    
+    if ((intStr.length() > 0 && intStr.substring(0, 1) >= "0" && intStr.substring(0, 1) <= "9"))
+      interval = intStr.toInt();
+// TODO: probe actStr & filtStr
+    Esp1wire::Scheduler::ScheduleAction action;
+    Esp1wire::DeviceType filter = Esp1wire::DeviceTypeAll;
+    
+//    Serial.print("handleScheduleConfig: submit idx " + schedule + ", intStr " + intStr + ", actStr " + actStr + ", filtStr " + filtStr + ", interval " + String(interval));
+    
+    if (interval == 0) {
+      *resultCode = 403;
+      return "wrong interval";
+    }
+    
+    if (isNumber) {
+      if (actStr.toInt() == 0xFF)
+        scheduler.removeSchedule(schedule.toInt());
+      else {
+        scheduler.updateSchedule(schedule.toInt(), interval, (Esp1wire::Scheduler::ScheduleAction)actStr.toInt(), (Esp1wire::DeviceType)filtStr.toInt());
+      }
+    } else {
+      scheduler.addSchedule(interval, (Esp1wire::Scheduler::ScheduleAction)actStr.toInt(), (Esp1wire::DeviceType)filtStr.toInt());
+    }
+    
     *resultCode = 303;
   }
   

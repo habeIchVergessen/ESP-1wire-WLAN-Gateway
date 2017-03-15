@@ -1,7 +1,8 @@
-##class Esp1wire##
+**class Esp1wire**
 
-###public###
-|| method | description |
+***public***
+
+| | method | description |
 | --- | --- | --- |
 | bool | **probeI2C(uint8_t sda, uint8_t scl)** | scan i2c bus for DS2482-100/800 bus master chips |
 | | sda, scl | gpio pin for SDA, SCL (default SDA, SCL) |
@@ -10,12 +11,13 @@
 | bool | **resetSearch()** | start scanning each detected 1-wire bus |
 | [AlarmFilter](./AlarmFilter.md) | **alarmSearch(DeviceType targetSearch)** | perform a conditional search on each detected 1-wire bus |
 | | targetSearch | enable FAMILY CODE filter (just implemented for DeviceTypeSwitch yet) |
-| [DeviceFilter](./DeviceFiler.md) | **getDeviceFilter(DeviceType filter)** | device list iterator |
+| [DeviceFilter](./DeviceFilter.md) | **getDeviceFilter(DeviceType filter)** | device list iterator |
 | | filter | default DeviceTypeAll |
 | [TemperatureDeviceFilter](./TemperatureDeviceFilter.md) | **getTemperatureDeviceFilter()** | temperature device list iterator |
 | uint8_t | **getBusCount()** | amount of detected 1-wire busses |
 
-###DeviceType###
+##### DeviceType
+
 | name | description |
 | --- | --- |
 | DeviceTypeUnsupported | all not implemeted devices |
@@ -25,7 +27,8 @@
 | DeviceTypeBattery | DS2438 (family code 0x26) |
 | DeviceTypeAll | all devices |
 
-###BusmasterType###
+##### BusmasterType
+
 | name | description |
 | --- | --- |
 | DS2482_100 | DS2482-100 |
@@ -41,7 +44,8 @@
 
 [class TemperatureDevice](./TemperatureDevice.md) : Device
 
-###protected###
+***protected***
+
 [class Busmaster](./Busmaster.md)
 
 [class Bus](./Bus.md)
@@ -59,4 +63,3 @@
 [class HelperSwitchDevice](./HelperSwitchDevice.md) : [SwitchDevice](./SwitchDevice.md)
 
 [class HelperTemperatureDevice](./HelperTemperatureDevice.md) : [TemperatureDevice](./TemperatureDevice.md)
-
