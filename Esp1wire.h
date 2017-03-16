@@ -153,7 +153,7 @@ class Esp1wire {
         virtual void    setPowerSupply(bool power);
 
       protected:
-        void            deviceDetected(uint8_t *address);
+        Device          *deviceDetected(uint8_t *address);
         int8_t          addressCompare(uint8_t *addr1, uint8_t *addr2);
         DeviceType      getDeviceType(uint8_t *address);
         void            alarmSearchHandleFound(uint8_t *address);

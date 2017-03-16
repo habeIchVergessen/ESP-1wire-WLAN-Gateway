@@ -24,6 +24,7 @@ bool httpRequestProcessed     = false;
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
 //#define _DEBUG_TEST_DATA
+//#define _DEBUG_DUMMY_DEVICES
 //#define _DEBUG_DEVICE_DS2438
 
 // EspWifi
@@ -71,48 +72,13 @@ void setup() {
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter();
   while (deviceFilter.hasNext()) {
     Esp1wire::Device *device = deviceFilter.getNextDevice();
-    Serial.print("device: " + device->getOneWireDeviceID() + " -> " + device->getName());
-    
-    // temperature devices
-    if (device->getDeviceType() == Esp1wire::DeviceTypeTemperature) {
-      ((Esp1wire::TemperatureDevice*)device)->readConfig();
-
-      switch (((Esp1wire::TemperatureDevice*)device)->readResolution()) {
-        case Esp1wire::TemperatureDevice::resolution12bit:
-          Serial.print(" res: 12 bit");
-          break;
-        case Esp1wire::TemperatureDevice::resolution11bit:
-          Serial.print(" res: 11 bit");
-          break;
-        case Esp1wire::TemperatureDevice::resolution10bit:
-          Serial.print(" res: 10 bit");
-          break;
-        case Esp1wire::TemperatureDevice::resolution9bit:
-          Serial.print(" res: 9 bit");
-          break;
-      }
-      if (((Esp1wire::TemperatureDevice*)device)->powerSupply())
-        Serial.print(" parasite");
-
-      int8_t alarmLow, alarmHigh;
-      if (((Esp1wire::TemperatureDevice*)device)->getAlarmTemperatures(&alarmLow, &alarmHigh)) {
-        Serial.print(" alarm low: " + String(alarmLow) + " high: " + String(alarmHigh));
-      }
-    }
-    // switch devices
-    if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
-      ((Esp1wire::SwitchDevice*)device)->readConfig();
-    }
-    // battery devices
-    if (device->getDeviceType() == Esp1wire::DeviceTypeBattery) {
-      ((Esp1wire::BatteryDevice*)device)->readConfig();
-    }
-    Serial.println();
+    Serial.println("device: " + device->getOneWireDeviceID() + " -> " + device->getName());
   }
 
   // deviceConfig handler
   registerDeviceConfigCallback(handleDeviceConfig);
   registerDeviceListCallback(handleDeviceList);
+  
   // scheduleConfig handler
   registerScheduleConfigCallback(handleScheduleConfig);
   registerScheduleListCallback(handleScheduleList);
@@ -125,8 +91,6 @@ void setup() {
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleResetSearch, resetSearch);
   scheduler.loadSchedules();
 
-  Serial.println("SensorName:     " + SensorName(Counter));
-  Serial.println("SensorNamePort: " + SensorNamePort(Counter, '1'));
   printHeapFree();
 
 #ifdef _DEBUG_TEST_DATA
@@ -392,7 +356,20 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
       html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
       action += F("&customName=");
     }
-
+    // battery
+    if (device->getDeviceType() == Esp1wire::DeviceTypeBattery) {
+      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+      uint8_t curr = devConf.getValue(F("requestVdd")).toInt();
+      html += htmlLabel(F("request"), F("request: "));
+      String options = htmlOption("0", F("VAD"), (curr & 0x01) == 0);
+      options += htmlOption("1", F("VAD+VDD"), (curr & 0x01) == 1);
+      html += htmlSelect(F("request"), options) + htmlNewLine();
+      action += F("&request=");
+      html += htmlLabel(F("customName"), F("custom name: "));
+      html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+      action += F("&customName=");
+    }
+    
     if (html != "") {
       *resultCode = 200;
       html = "<h4>" + device->getName() + " (" + deviceID + ")" + "</h4>" + html;
@@ -435,7 +412,8 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
         case Esp1wire::SwitchDevice::SourceSelectPIOStatus:
           break;
         default:
-          return ""; // SourceSelect: invalid value report Error
+          *resultCode = 403;
+          return "wrong value for source select"; // SourceSelect: invalid value report Error
           break;
       }
       
@@ -450,6 +428,24 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
       if (devConf.hasChanged()) {
         devConf.saveToFile();
         ((Esp1wire::SwitchDevice*)device)->readConfig();
+      }
+    }
+
+    // BatteryDevice
+    if (device->getDeviceType() == Esp1wire::DeviceTypeBattery) {
+      int8_t request = server->arg("request").toInt() & 0x01;
+
+      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+      devConf.setValue("requestVdd", String(request));
+
+      if (server->arg("customName") != "")
+        devConf.setValue("customName", server->arg("customName"));
+      else
+        devConf.unsetValue("customName");
+
+      if (devConf.hasChanged()) {
+        devConf.saveToFile();
+        ((Esp1wire::BatteryDevice*)device)->readConfig();
       }
 
       *resultCode = 200;
@@ -480,6 +476,7 @@ String handleDeviceList() {
     switch (device->getDeviceType()) {
       case Esp1wire::DeviceTypeSwitch:
       case Esp1wire::DeviceTypeTemperature:
+      case Esp1wire::DeviceTypeBattery:
         result += htmlAnker(device->getOneWireDeviceID(), F("dc"), F("..."));
         break;
     }
