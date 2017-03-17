@@ -9,6 +9,7 @@ EspConfig::EspConfig(String appName) {
   if (openRead()) {
     while (configFile.available()) {
       String data = configFile.readStringUntil('\n');
+
       int idx;
       if (data.startsWith("'") && data.endsWith("'") && (idx = data.indexOf("' = '")) > 0) {
         setValue(data.substring(1, idx), data.substring(idx + 5, data.length() - 1));

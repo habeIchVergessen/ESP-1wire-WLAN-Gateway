@@ -435,10 +435,12 @@ Esp1wire::Device *Esp1wire::Bus::deviceDetected(uint8_t *address) {
     deviceList->device = new Device(this, address, deviceType);
     deviceList->next = currDevice;
 
-    if (prevDevice == firstDevice)
+    if (currDevice == firstDevice)
       firstDevice = deviceList;
     else
       prevDevice->next = deviceList;
+    mDeviceListCount++;
+    
     return deviceList->device;  // leaf while after insert
   }
 }
@@ -1665,7 +1667,55 @@ void Esp1wire::Scheduler::loadSchedules() {
     return;
   }
 
-  // TODO: load schedules
+  for (uint8_t cnt=0; cnt<schedules; cnt++) {
+    String sched = schedConfig.getValue("#" + String(cnt)), intStr, actStr, filtStr;
+
+    uint8_t idx;
+    if (sched != "" && (idx = sched.indexOf(",")) > 0 && (intStr = sched.substring(0, idx)) != "" && intStr.toInt() > 0) {
+      sched = sched.substring(idx + 1);
+      if ((idx = sched.indexOf(",")) > 0 && (actStr = sched.substring(0, idx)) != "" && actStr.substring(0, 1) >= "0" && actStr.substring(0, 1) <= "9") {
+        sched = sched.substring(idx + 1);
+
+        if ((intStr.toInt() & 0xFFFF) > 0) {
+          DeviceType filter = DeviceTypeAll;
+  
+          switch (sched.toInt() & 0xFF) {
+            case DeviceTypeSwitch:
+              filter = DeviceTypeSwitch;
+              break;
+          }
+          switch (actStr.toInt() & 0x04) {
+            case  scheduleRequestTemperatues:
+            case scheduleRequestBatteries:
+            case scheduleReadCounter:
+            case scheduleAlarmSearch:
+            case scheduleResetSearch:
+              scheduler.addSchedule(intStr.toInt() & 0xFFFF, (ScheduleAction)actStr.toInt(), filter);
+              break;
+          }
+        }          
+      }
+    }
+  }
+}
+
+void Esp1wire::Scheduler::saveSchedules() {
+  EspConfig schedConfig = EspConfig("scheduler");
+
+  ScheduleList *curr = first;
+  uint8_t cnt = 0;
+
+  schedConfig.unsetAll();
+  
+  while (curr != NULL) {
+    schedConfig.setValue("#" + String(cnt), String(curr->interval / 1000) + "," + String(curr->action) + "," + String(curr->filter));
+    
+    curr = curr->next;
+    cnt++;
+  }
+
+  schedConfig.setValue(F("schedules"), String(cnt));
+  schedConfig.saveToFile();
 }
 
 void Esp1wire::Scheduler::registerCallback(ScheduleAction action, SchedulerCallback callback) {

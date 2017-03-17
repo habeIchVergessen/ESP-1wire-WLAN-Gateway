@@ -551,6 +551,7 @@ class Esp1wire {
       void      addSchedule(uint16_t interval, ScheduleAction action, DeviceType filter=DeviceTypeAll);
       void      runSchedules();
       void      loadSchedules();
+      void      saveSchedules();
       uint8_t   getSchedulesCount() { return mSchedulesCount; };
       bool      getSchedule(uint8_t idx, uint16_t *interval, ScheduleAction *action, DeviceType *filter);
       void      updateSchedule(uint8_t idx, uint16_t interval, ScheduleAction action, DeviceType filter=DeviceTypeAll);

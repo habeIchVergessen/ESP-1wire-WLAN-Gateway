@@ -19,8 +19,8 @@ byte BMP_ID                   = 0;
 bool httpRequestProcessed     = false;
 
 //#define _DEBUG
-#define _DEBUG_SETUP
-#define _DEBUG_TIMING
+//#define _DEBUG_SETUP
+//#define _DEBUG_TIMING
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
 //#define _DEBUG_TEST_DATA
@@ -494,7 +494,6 @@ String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
   String schedule = server->arg("schedule"), result = "";
 
   if (server->arg("action") == "form") {
-    Serial.println("handleScheduleConfig: form");
     String actStr = F("/config?ChipID=");
     actStr += getChipID();
     actStr += F("&schedule=");
@@ -554,6 +553,7 @@ String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
     } else {
       scheduler.addSchedule(interval, (Esp1wire::Scheduler::ScheduleAction)actStr.toInt(), (Esp1wire::DeviceType)filtStr.toInt());
     }
+    scheduler.saveSchedules();
     
     *resultCode = 303;
   }
@@ -617,6 +617,7 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
       esp1wire.resetSearch();
       listDevices();
       Serial.println("uptime: " + uptime());
+      printHeapFree();
       break;
     case 'v':
       // Version info
