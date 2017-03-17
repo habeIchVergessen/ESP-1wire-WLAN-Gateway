@@ -60,6 +60,8 @@ void readBatteries(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 void readCounter(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 void resetSearch(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 
+#define _PFANNEX
+
 void setup() {
   Serial.begin(115200);
   yield();
@@ -71,7 +73,11 @@ void setup() {
 
   printHeapFree();
 
+#ifdef _PFANNEX
+  if (!esp1wire.probeI2C(4, 5) && !esp1wire.probeGPIO(2))
+#else
   if (!esp1wire.probeI2C() && !esp1wire.probeGPIO())
+#endif
     Serial.println("no 1-wire detected!");
   else
     esp1wire.resetSearch();

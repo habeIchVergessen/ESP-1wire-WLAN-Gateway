@@ -329,7 +329,6 @@ void httpHandleConfig() {
     }
 
 #ifdef _MQTT_SUPPORT
-Serial.println("mqtt: " + server.arg("mqtt"));
     if (server.hasArg("mqtt") && server.arg("mqtt") == "") {
       String result = F("<h4>MQTT</h4>");
       result += mqttForm();

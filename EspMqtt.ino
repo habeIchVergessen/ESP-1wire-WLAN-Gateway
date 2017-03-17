@@ -19,9 +19,9 @@ EspMqtt::EspMqtt(String mqttClientName) {
 }
 
 bool EspMqtt::testConfig(String server, String port, String user, String password) {
-  bool result = false;
+  bool result = (server == "" && port == "");
   
-  if ((result = connect(server, port, user, password, true)) && sendAlive()) {
+  if ((server == "" && port == "") || ((result = connect(server, port, user, password, true)) && sendAlive())) {
     espConfig.setValue(F("mqttServer"), server);
     espConfig.setValue(F("mqttPort"), port);
     espConfig.setValue(F("mqttUser"), user);
