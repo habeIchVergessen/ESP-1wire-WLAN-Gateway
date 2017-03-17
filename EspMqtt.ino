@@ -1,18 +1,19 @@
 #ifdef _MQTT_SUPPORT
 
+#include "EspMqtt.h"
+
 bool espMqttInitDone = false;
 
 void loopEspMqtt() {
   if (!espMqttInitDone && (WiFi.status() == WL_CONNECTED)) {
     espMqttInitDone = true;
-    espMqtt.publish(PROGNAME, "Alive");
+    espMqtt.sendAlive();
   }
 }
 
-#include "EspMqtt.h"
-
 EspMqtt::EspMqtt(String mqttClientName) {
-  mMqttClientName = mqttClientName + "@" + getChipID();
+  mMqttClientName   = mqttClientName + "@" + getChipID();
+  mMqttTopicPrefix  = mqttClientName + "/" + getChipID() + "/";
 
   mqttClient.setClient(wifiClient);
 }
@@ -20,12 +21,12 @@ EspMqtt::EspMqtt(String mqttClientName) {
 bool EspMqtt::testConfig(String server, String port, String user, String password) {
   bool result = false;
   
-  if ((result = connect(server, port, user, password, true))) {
-    espConfig.setValue("mqttServer", server);
-    espConfig.setValue("mqttPort", port);
-    espConfig.setValue("mqttUser", user);
-    espConfig.setValue("mqttPassword", password);
-//    espConfig.saveToFile();
+  if ((result = connect(server, port, user, password, true)) && sendAlive()) {
+    espConfig.setValue(F("mqttServer"), server);
+    espConfig.setValue(F("mqttPort"), port);
+    espConfig.setValue(F("mqttUser"), user);
+    espConfig.setValue(F("mqttPassword"), password);
+    espConfig.saveToFile();
   }
 
   return result;
@@ -36,11 +37,11 @@ bool EspMqtt::isConnected() {
 }
 
 bool EspMqtt::connect() {
-  return connect(espConfig.getValue("mqttServer"), espConfig.getValue("mqttPort"), espConfig.getValue("mqttUser"), espConfig.getValue("mqttPassword"));
+  return connect(espConfig.getValue(F("mqttServer")), espConfig.getValue(F("mqttPort")), espConfig.getValue(F("mqttUser")), espConfig.getValue(F("mqttPassword")));
 }
 
 bool EspMqtt::connect(String server, String port, String user, String password, bool reconnect) {
-  if (server == "" || port == "" || mLastConnectAttempFailed)
+  if (server == "" || port == "" || (mLastConnectAttempFailed && !reconnect))
     return false;
 
   if (!reconnect && isConnected())
@@ -81,11 +82,11 @@ bool EspMqtt::publish(String topic, String value, bool keepConnection) {
     return false;
 
 #if defined(_DEBUG_MQTT) || defined(_DEBUG_TIMING)
-  Serial.print("EspMqtt::publish: topic = '" + topic + "' value '" + value + "'");
+  Serial.print("EspMqtt::publish: topic = '" + mMqttTopicPrefix + topic + "' value '" + value + "'");
   unsigned long pubStart = micros();
 #endif
 
-  mqttClient.publish(String("/" + mMqttClientName + "/" + topic).c_str(), value.c_str());
+  mqttClient.publish(String(mMqttTopicPrefix + topic).c_str(), value.c_str());
 
 #if defined(_DEBUG_MQTT) || defined(_DEBUG_TIMING)
   Serial.println(" " + elapTime(pubStart));
@@ -93,6 +94,10 @@ bool EspMqtt::publish(String topic, String value, bool keepConnection) {
 
   if (!keepConnection)
     disconnect();
+}
+
+bool EspMqtt::sendAlive() {
+  return publish(F("Status"), F("Alive"));
 }
 
 IPAddress EspMqtt::parseIP(String ip) {

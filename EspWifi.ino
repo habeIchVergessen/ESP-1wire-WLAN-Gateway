@@ -214,17 +214,11 @@ void httpHandleRoot() {
   }
   html += F("</table>");
   message += htmlFieldSet(html, "WiFi");
+  message += "<a href=\"/devices\" class=\"dc\">Devices</a><a href=\"/schedules\" class=\"dc\">Schedules</a>";
 #ifdef _MQTT_SUPPORT
-  // mqtt
-  html = F("<table><tr><td>server:</td><td>");
-  if (espConfig.getValue("mqttServer") != "") {
-    html += espConfig.getValue("mqttServer") + ":" + espConfig.getValue("mqttPort");
-  }
-  html += + "</td><td><a id=\"mqtt\" class=\"dc\">...</a></td></tr>";
-  html += F("</table>");
-  message += htmlFieldSet(html, "MQTT");
+  message += "<a id=\"mqtt\" class=\"dc\">MQTT</a>";
 #endif
-  message += "<a href=\"/devices\" class=\"dc\">Devices</a><a href=\"/schedules\" class=\"dc\">Schedules</a><a id=\"ota\" class=\"dc\">OTA</a>";
+  message += "<a id=\"ota\" class=\"dc\">OTA</a>";
 
   server.client().setNoDelay(true);
   server.send(200, "text/html", htmlBody(message));
@@ -346,14 +340,14 @@ Serial.println("mqtt: " + server.arg("mqtt"));
     }
     
     if (server.arg("mqtt") == "submit") {
-      if (server.arg("action") == "test") {
-        espMqtt.testConfig(server.arg("server"), server.arg("port"), server.arg("user"), server.arg("password"));
-      } else if (server.arg("action") == "setup") {
-        espConfig.saveToFile();
+      if (espMqtt.testConfig(server.arg("server"), server.arg("port"), server.arg("user"), server.arg("password"))) {
+        server.client().setNoDelay(true);
+        server.send(200, "text/plain", "ok");
+      } else {
+        server.client().setNoDelay(true);
+        server.send(304, "text/plain", "MQTT connection test failed!");
       }
-      server.client().setNoDelay(true);
-      server.sendHeader("Location", "/");
-      server.send(303, "text/plain", "See Other");
+      httpRequestProcessed = true;
       return;
     }
 #endif

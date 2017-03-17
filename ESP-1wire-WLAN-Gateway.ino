@@ -30,19 +30,28 @@ bool httpRequestProcessed     = false;
 // EspWifi
 //#define _ESP_WIFI_UDP_MULTICAST_DISABLED
 
+#define _MQTT_SUPPORT
+
 #define PROGNAME "Esp1wire"
 #define PROGVERS "0.2"
-
-//#define _MQTT_SUPPORT
 
 #include "EspConfig.h"
 #include "Esp1wire.h"
 
+#ifdef _MQTT_SUPPORT
+  #include "PubSubClient.h"
+  #include "EspMqtt.h"
+#endif
+  
+// global objects
 Esp1wire esp1wire;
 Esp1wire::Scheduler scheduler;
 
-// global config object
 EspConfig espConfig(PROGNAME);
+
+#ifdef _MQTT_SUPPORT
+  EspMqtt espMqtt(PROGNAME);
+#endif
 
 // prototypes
 void alarmSearch(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
@@ -99,6 +108,10 @@ void setup() {
 }
 
 void loop() {
+#ifdef _MQTT_SUPPORT
+  loopEspMqtt();
+#endif
+
   // scheduler
   scheduler.runSchedules();
   
@@ -109,6 +122,10 @@ void loop() {
   if (Serial.available()) {
     handleSerialPort(Serial.read());
   }
+
+#ifdef _MQTT_SUPPORT
+  espMqtt.disconnect();
+#endif
 }
 
 void alarmSearch(Esp1wire::DeviceType filter) {
@@ -125,6 +142,9 @@ void alarmSearch(Esp1wire::DeviceType filter) {
 
       message += SensorDataValue(Temperature, tempC);
       message += SensorDataValue(Device, device->getName());
+#ifdef _MQTT_SUPPORT
+      espMqtt.publish(device->getOneWireDeviceID(), SensorName(Temperature), String(tempC)); 
+#endif
 
       sendMessage(message, tempStart);
     }
@@ -138,10 +158,20 @@ void alarmSearch(Esp1wire::DeviceType filter) {
       message += SensorDataValuePort(Latch, 'A', channelStatus.latchA);
       message += SensorDataValuePort(Sense, 'A', channelStatus.senseA);
       message += SensorDataValuePort(FlipFlopQ, 'A', channelStatus.flipFlopQA);
+#ifdef _MQTT_SUPPORT
+      espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'A'), String(channelStatus.latchA)); 
+      espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'A'), String(channelStatus.senseA)); 
+      espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(FlipFlopQ, 'A'), String(channelStatus.flipFlopQA)); 
+#endif
       if (channelStatus.noChannels == 2) {
         message += SensorDataValuePort(Latch, 'B', channelStatus.latchB);
         message += SensorDataValuePort(Sense, 'B', channelStatus.senseB);
         message += SensorDataValuePort(FlipFlopQ, 'B', channelStatus.flipFlopQB);
+#ifdef _MQTT_SUPPORT
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'B'), String(channelStatus.latchB)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'B'), String(channelStatus.senseB)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(FlipFlopQ, 'B'), String(channelStatus.flipFlopQB)); 
+#endif
       }
       message += SensorDataValue(Device, device->getName());
 
@@ -163,6 +193,10 @@ void readCounter(Esp1wire::DeviceType filter) {
       message += SensorDataValuePort(Counter, '1', c1);
       message += SensorDataValuePort(Counter, '2', c2);
       message += SensorDataValue(Device, device->getName());
+#ifdef _MQTT_SUPPORT
+      espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Counter, '1'), String(c1)); 
+      espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Counter, '2'), String(c2)); 
+#endif
 
       sendMessage(message, tempStart);
     }
@@ -186,6 +220,9 @@ void readTemperatures(Esp1wire::DeviceType filter) {
       String message = SensorDataHeader(PROGNAME, device->getOneWireDeviceID());
       message += SensorDataValue(Temperature, tempC);
       message += SensorDataValue(Device, device->getName());
+#ifdef _MQTT_SUPPORT
+      espMqtt.publish(device->getOneWireDeviceID(), SensorName(Temperature), String(tempC)); 
+#endif
 
       sendMessage(message, tempStart);
     }
@@ -207,13 +244,22 @@ void readBatteries(Esp1wire::DeviceType filter) {
       message += SensorDataValuePort(Voltage, "VAD", String(voltage, 3));
       message += SensorDataValuePort(Current, "VAD", String(current, 3));
       message += SensorDataValuePort(Capacity, "VAD", String(capacity, 3));
+#ifdef _MQTT_SUPPORT
+      espMqtt.publish(SensorNamePort(Voltage, "VAD"), String(voltage, 3)); 
+      espMqtt.publish(SensorNamePort(Current, "VAD"), String(current, 3)); 
+      espMqtt.publish(SensorNamePort(Capacity, "VAD"), String(current, 3)); 
+#endif
     }
     // requestVdd depends on device config (default vad only)
-//    if (device->getRequestVdd() && device->requestVDD(&voltage, &current, &capacity)) {
-    if (device->requestVDD(&voltage, &current, &capacity)) {
+    if (device->getRequestVdd() && device->requestVDD(&voltage, &current, &capacity)) {
       message += SensorDataValuePort(Voltage, "VDD", String(voltage, 3));
       message += SensorDataValuePort(Current, "VDD", String(current, 3));
       message += SensorDataValuePort(Capacity, "VDD", String(capacity, 3));
+#ifdef _MQTT_SUPPORT
+      espMqtt.publish(SensorNamePort(Voltage, "VDD"), String(voltage, 3)); 
+      espMqtt.publish(SensorNamePort(Current, "VDD"), String(current, 3)); 
+      espMqtt.publish(SensorNamePort(Capacity, "VDD"), String(current, 3)); 
+#endif
     }
     message += SensorDataValue(Device, device->getName());
 

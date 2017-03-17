@@ -22,10 +22,12 @@ public:
   void          disconnect();
   bool          publish(String topic, String value, bool keepConnection=true);
   bool          publish(String deviceName, String attributeName, String attributeValue, bool keepConnection=true);
+  bool          sendAlive();
 
 protected:
   bool          mLastConnectAttempFailed = false;
   String        mMqttClientName;
+  String        mMqttTopicPrefix;
   WiFiClient    wifiClient;
   PubSubClient  mqttClient;
 
