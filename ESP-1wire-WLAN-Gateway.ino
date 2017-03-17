@@ -31,7 +31,7 @@ bool httpRequestProcessed     = false;
 //#define _ESP_WIFI_UDP_MULTICAST_DISABLED
 
 #define PROGNAME "Esp1wire"
-#define PROGVERS "0.1"
+#define PROGVERS "0.2"
 
 //#define _MQTT_SUPPORT
 
