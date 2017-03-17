@@ -80,6 +80,7 @@ class Esp1wire {
       , statusParasiteOn    = (byte)0x02
       , statusResolution    = (byte)0x0C  // 2 bits
       , statusAlarm         = (byte)0x10
+      , statusBattVdd       = (byte)0x20  // read VDD too
     };
 
     // class Busmaster
@@ -152,7 +153,7 @@ class Esp1wire {
         virtual void    setPowerSupply(bool power);
 
       protected:
-        void            deviceDetected(uint8_t *address);
+        Device          *deviceDetected(uint8_t *address);
         int8_t          addressCompare(uint8_t *addr1, uint8_t *addr2);
         DeviceType      getDeviceType(uint8_t *address);
         void            alarmSearchHandleFound(uint8_t *address);
@@ -458,6 +459,10 @@ class Esp1wire {
       bool                    requestTemperatureC(float *temperature);
       bool                    requestVDD(float *voltage, float *current, float *capacity, float resistorSens=0.025);
       bool                    requestVAD(float *voltage, float *current, float *capacity, float resistorSens=0.025);
+      bool                    getRequestVdd() { return (mStatus & statusBattVdd); };
+      void                    setRequestVdd(bool vdd) { if (vdd) mStatus |= statusBattVdd; else mStatus &= ~statusBattVdd; };
+
+      void                    readConfig();
 
     protected:
       enum      InputSelect {
@@ -536,6 +541,7 @@ class Esp1wire {
       , scheduleRequestBatteries    = (byte)0x01
       , scheduleReadCounter         = (byte)0x02
       , scheduleAlarmSearch         = (byte)0x03
+      , scheduleResetSearch         = (byte)0x04
       };
 
       typedef void (*SchedulerCallback) (DeviceType filter);
@@ -545,6 +551,7 @@ class Esp1wire {
       void      addSchedule(uint16_t interval, ScheduleAction action, DeviceType filter=DeviceTypeAll);
       void      runSchedules();
       void      loadSchedules();
+      void      saveSchedules();
       uint8_t   getSchedulesCount() { return mSchedulesCount; };
       bool      getSchedule(uint8_t idx, uint16_t *interval, ScheduleAction *action, DeviceType *filter);
       void      updateSchedule(uint8_t idx, uint16_t interval, ScheduleAction action, DeviceType filter=DeviceTypeAll);
@@ -561,7 +568,7 @@ class Esp1wire {
       };
 
       ScheduleList      *first = NULL, *last = NULL;
-      SchedulerCallback schedulerCallbacks[4] = { NULL, NULL, NULL, NULL };
+      SchedulerCallback schedulerCallbacks[5] = { NULL, NULL, NULL, NULL, NULL };
       uint8_t           mSchedulesCount = 0;
     };
     
