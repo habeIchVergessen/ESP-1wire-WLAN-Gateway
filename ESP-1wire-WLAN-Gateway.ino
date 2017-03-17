@@ -60,7 +60,7 @@ void readBatteries(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 void readCounter(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 void resetSearch(Esp1wire::DeviceType filter=Esp1wire::DeviceTypeAll);
 
-#define _PFANNEX
+//#define _PFANNEX
 
 void setup() {
   Serial.begin(115200);
