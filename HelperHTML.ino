@@ -74,8 +74,7 @@ String flashForm() {
   action += getChipID();
   action += F(".bin");
 
-  String html = htmlLabel("file", "file: ");
-  html += htmlInput("file", "file", "", 0) + htmlNewLine();
+  String html = htmlInput("file", "file", "", 0) + htmlNewLine();
 
   return htmlForm(html, action, "post", "submitForm", "multipart/form-data");
 }
