@@ -7,7 +7,7 @@
 
 class EspMe {
 public:
-  enum station_t {
+  enum station_t : byte {
     SW02_01       = 0x01
   , SW02_10       = 0x02
   , SW02_11       = 0x80
@@ -15,7 +15,7 @@ public:
   , SW02_RESET    = 0xFF
   };
   
-  enum command_t {
+  enum command_t : byte {
     cmd_open      = 0x0B
   , cmd_monitor   = 0x0D
   , cmd_pickup    = 0x0E
@@ -23,7 +23,7 @@ public:
   , cmd_bell      = 0x9E
   };
   
-  enum state_t {
+  enum state_t : byte {
     state_idle = 0
   , state_send = 1
   , state_recv = 2

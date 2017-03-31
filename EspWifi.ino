@@ -260,6 +260,12 @@ void httpHandleConfig() {
       return;
     }
 
+#ifdef _DEBUG_HTTP
+    for (int i=0; i<server.args();i++) {
+      Serial.println("#" + String(i) + " '" + server.argName(i) + "' = '" + server.arg(i) + "'");
+    }
+#endif
+
     if (server.arg("deviceID") != "") {
       String result = "";
       uint16_t resultCode;
@@ -304,6 +310,14 @@ void httpHandleConfig() {
       return;
     }
 
+    if (server.hasArg("resetSearch") && server.arg("resetSearch")== "") {
+      esp1wire.resetSearch();
+      server.client().setNoDelay(true);
+      server.send(200, "text/html", "ok");
+      httpRequestProcessed = true;
+      return;
+    }
+    
     if (server.hasArg("ota") && server.arg("ota")== "") {
       String result = F("<h4>OTA</h4>");
       result += flashForm();
@@ -387,11 +401,18 @@ void httpHandleDevices() {
 #ifdef _DEBUG_TIMING
       unsigned long sendStart = micros();
 #endif
-      message = F("<div class=\"menu\"><a id=\"back\" class=\"dc\" style=\"float: right;\">Back</a></div>");
-      String html = F("<table><tr><th>Name</th><th>Type</th></tr>");
+      message = F("<div class=\"menu\"><a id=\"resetSearch\" class=\"dc\">resetSearch</a><sp><a id=\"back\" class=\"dc\">Back</a></sp></div>");
+      String html = F("<table id=\"devices\"><thead><tr><th>Name</th><th>Type</th></tr></thead>");
       html += devList;
       html += F("</table>");
-      message += htmlFieldSet(html, "Devices");
+      String options = htmlOption("255", F("All"), true);
+      options += htmlOption("18", F("Battery"));
+      options += htmlOption("8", F("Counter"));
+      options += htmlOption("4", F("Switch"));
+      options += htmlOption("2", F("Temperature"));
+      String legend = htmlSelect(F("filter"), options, F("javascript:filter();"));
+      legend += F(" Devices");
+      message += htmlFieldSet(html, legend);
 
       server.client().setNoDelay(true);
       server.send(200, "text/html", htmlBody(message));
@@ -443,7 +464,7 @@ void httpHandleDeviceListCss() {
   Serial.print("httpHandleDeviceListCss: ");
   server.sendHeader("Cache-Control", "public, max-age=86400");
   server.client().setNoDelay(true);
-  String css = F(".menu{height:1.3em;padding:5px 5px 5px 5px;margin-bottom:5px;background-color:#E0E0E0;}.menu .dc{float:left;}.menu sp{float: right;}label{width:4em;text-align:left;display:inline-block;} input[type=text]{margin-bottom:2px;} table td{padding:5px 15px 0px 0px;} table th{text-align:left;} fieldset{margin:0px 10px 10px 10px;}");
+  String css = F(".menu{height:1.3em;padding:5px 5px 5px 5px;margin-bottom:5px;background-color:#E0E0E0;}.menu .dc{float:left;}.menu sp{float: right;}label{width:4em;text-align:left;display:inline-block;} input[type=text]{margin-bottom:2px;} table td{padding:5px 15px 0px 0px;} table th{text-align:left;} fieldset{margin:0px 10px 10px 10px;max-height:20em;overflow:auto;} legend select{margin-right:5px;}");
   css += F(".dc{border:1px solid #A0A0A0;border-radius:5px;padding:0px 3px 0px 3px;}a.dc{color:black;text-decoration:none;margin-right:3px;outline-style:none;}.dc:hover{border:1px solid #5F5F5F;background-color:#D0D0D0;cursor:pointer;} #mD{background:rgba(0,0,0,0.5);visibility:hidden;position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;padding-top:10%;} #mDC{border:1px solid #A0A0A0;border-radius:5px;background:rgba(255,255,255,1);margin:auto;display:inline-block;} #mDCC label{margin-left:10px;width:8em;text-align:left;display:inline-block;} #mDCC select,input{margin:5px 10px 0px 10px;width:13em;display:inline-block;} #mDCB{float:right;margin:10px 10px 10px 10px;} #mDCB a{margin:0px 2px 0px 2px;}");
   server.send(200, "text/css", css);
   httpRequestProcessed = true;
@@ -453,10 +474,11 @@ void httpHandleDeviceListJss() {
   Serial.print("httpHandleDeviceListJss: ");
   server.sendHeader("Cache-Control", "public, max-age=86400");
   server.client().setNoDelay(true);
-  String script = F("function windowClick(e){if(e.target.className==\"dc\"&&e.target.id){modDlg(true,false,e.target.id);}}function modDlg(open,save,id){var md=document.getElementById('mD');if(id=='back'){history.back();return;}if(save){var form=document.getElementById('submitForm');if(form){form.submit();return;}form=document.getElementById('configForm');if(form){var aStr=form.action;var idx=aStr.indexOf('?');var url=aStr.substr(0, idx + 1);var params='';var elem;var parse;aStr=aStr.substr(idx + 1);while(1){idx=aStr.indexOf('&');if(idx>0)parse=aStr.substr(0, idx);else parse=aStr;");
+  String script = F("function windowClick(e){if(e.target.className==\"dc\"&&e.target.id){modDlg(true,false,e.target.id);}}function modDlg(open,save,id){if(id=='back'){history.back();return;} var md=document.getElementById('mD');if(save){var form=document.getElementById('submitForm');if(form){form.submit();return;}form=document.getElementById('configForm');if(form){var aStr=form.action;var idx=aStr.indexOf('?');var url=aStr.substr(0, idx + 1);var params='';var elem;var parse;aStr=aStr.substr(idx + 1);while(1){idx=aStr.indexOf('&');if(idx>0)parse=aStr.substr(0, idx);else parse=aStr;");
   script += F("if(parse.substr(parse.length-1)!='='){params+=parse+'&';}else{elem=document.getElementsByName(parse.substr(0,parse.length-1));if(elem && elem[0])params+=parse+elem[0].value+'&';}if(idx>0) aStr=aStr.substr(idx+1); else break;}try{var xmlHttp=new XMLHttpRequest();xmlHttp.open('POST',url+params,false);xmlHttp.send(null);if(xmlHttp.status!=200){alert('Fehler: '+xmlHttp.statusText);return;}}catch(err){alert('Fehler: '+err.message);return;}}}if(open){try{var url='/config?ChipID=");
   script += getChipID();
-  script += F("&action=form';if(id.indexOf('schedule#')==0)url+='&schedule='+id.substr(9);else if(id=='mqtt'||id=='wifi'||id=='ota')url+='&'+id+'=';else url+='&deviceID='+id;var xmlHttp=new XMLHttpRequest(); xmlHttp.open('POST',url,false);xmlHttp.send(null);if(xmlHttp.status != 200){alert('Fehler: '+xmlHttp.statusText);return;}document.getElementById('mDCC').innerHTML=xmlHttp.responseText;}catch(err){alert('Fehler: '+err.message);return;}}md.style.visibility=(open?'visible':'hidden');if(!open){document.getElementById('mDCC').innerHTML='';}}");
+  script += F("&action=form';if(id.indexOf('schedule#')==0)url+='&schedule='+id.substr(9);else if(id=='mqtt'||id=='wifi'||id=='ota'||id=='resetSearch')url+='&'+id+'=';else url+='&deviceID='+id;var xmlHttp=new XMLHttpRequest(); xmlHttp.open('POST',url,false);xmlHttp.send(null);if(xmlHttp.status != 200){alert('Fehler: '+xmlHttp.statusText);return;}if(id=='resetSearch'){window.location.reload();return;}document.getElementById('mDCC').innerHTML=xmlHttp.responseText;}catch(err){alert('Fehler: '+err.message);return;}}md.style.visibility=(open?'visible':'hidden');if(!open){document.getElementById('mDCC').innerHTML='';}}");
+  script += F("function filter(){var filter=document.getElementsByName('filter')[0];var table=document.getElementById('devices');if(filter&&table){var trs=document.getElementsByTagName('tr');i=1;while(trs[i]){trs[i].style.display=((filter.value&trs[i].firstChild.nodeValue)==filter.value||filter.value==255?'table-row':'none');i++;}}}");
   server.send(200, "text/javascript", script);
   httpRequestProcessed = true;
 }

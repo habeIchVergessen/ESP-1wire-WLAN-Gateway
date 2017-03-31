@@ -9,6 +9,7 @@
 
 #include "ESP8266WiFi.h"
 #include "ESP8266WebServer.h"
+//#define _DEBUG_HTTP
 #include "EspWifi.h"
 
 // KeyValueProtocol with full format keys
@@ -19,7 +20,7 @@ byte BMP_ID                   = 0;
 bool httpRequestProcessed     = false;
 
 //#define _DEBUG
-//#define _DEBUG_SETUP
+#define _DEBUG_SETUP
 //#define _DEBUG_TIMING
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
@@ -557,7 +558,9 @@ String handleDeviceList() {
   while (deviceFilter.hasNext()) {
     device = deviceFilter.getNextDevice();
 
-    result += F("<tr><td>");
+    result += F("<tr><!--");
+    result += device->getDeviceType();
+    result += F("--><td>");
     result += device->getOneWireDeviceID();
     result += F("</td><td>");
     result += device->getName();

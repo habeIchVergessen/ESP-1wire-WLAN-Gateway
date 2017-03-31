@@ -14,12 +14,14 @@
 #define valueField       F(" value=")
 #define idField          F(" id=")
 #define classField       F(" class=")
+#define onChangeField    F(" onchange=");
 
 // prototypes
 String htmlForm(String html, String pAction, String pMethod, String pID="", String pEnctype="", String pLegend="");
 String htmlInput(String pName, String pType, String pValue, int pMaxLength=0, String pMinNumber="", String pMaxNumber="");
 String htmlFieldSet(String pHtml, String pLegend="");
 String htmlOption(String pValue, String pText, bool pSelected=false);
+String htmlSelect(String pName, String pOptions, String pOnChange="");
 
 String htmlBody(String html) {
   String doc = F("<!DOCTYPE html><html lang=\"de\"><body>");
@@ -223,6 +225,10 @@ String htmlAnker(String pId, String pClass, String pText) {
   return result;  
 }
 
+String htmlOption(String pValue, String pText) {
+  return htmlOption(pValue, pText, false);
+}
+
 String htmlOption(String pValue, String pText, bool pSelected) {
   String result = F("<option");
   result += valueField;
@@ -239,11 +245,21 @@ String htmlOption(String pValue, String pText, bool pSelected) {
 }
 
 String htmlSelect(String pName, String pOptions) {
+  return htmlSelect(pName, pOptions, "");
+}
+
+String htmlSelect(String pName, String pOptions, String pOnChange) {
   String result = F("<select");
   result += nameField;
   result += textMark;
   result += pName;
   result += textMark;
+  if (pOnChange != "") {
+    result += onChangeField;
+    result += textMark;
+    result += pOnChange;
+    result += textMark;
+  }
   result += F(">");
   result += pOptions;
   result += F("</select>");

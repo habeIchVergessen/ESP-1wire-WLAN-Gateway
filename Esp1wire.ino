@@ -136,13 +136,13 @@ Esp1wire::AlarmFilter Esp1wire::alarmSearch(DeviceType targetSearch) {
 
   uint8_t bus = 1;
   while (curr != NULL) {
-#if defined(_DEBUG_TIMING) || defined(_DEBUG_SETUP)
+#if defined(_DEBUG_TIMING)
     Serial.print("bus #" + (String)bus + ": alarm search ");
     unsigned long start = micros();
 #endif
     curr->bus->alarmSearch(targetSearch);
 
-#if defined(_DEBUG_TIMING) || defined(_DEBUG_SETUP)
+#if defined(_DEBUG_TIMING)
     Serial.println(" " + elapTime(start));
 #endif
     curr = curr->next;
