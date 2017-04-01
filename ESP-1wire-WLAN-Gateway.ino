@@ -34,7 +34,7 @@ bool httpRequestProcessed     = false;
 #define _MQTT_SUPPORT
 
 #define PROGNAME "Esp1wire"
-#define PROGVERS "0.2"
+#define PROGVERS "0.2a"
 
 #include "EspConfig.h"
 #include "Esp1wire.h"
@@ -68,7 +68,7 @@ bool sendKeyValueProtocol = true;
 #endif
 
 // m-e Vistadoor support
-#define _ESP_ME_SUPPORT
+//#define _ESP_ME_SUPPORT
 #ifdef _ESP_ME_SUPPORT
   #include "PacketFifo.h"
   #include "EspMe.h"

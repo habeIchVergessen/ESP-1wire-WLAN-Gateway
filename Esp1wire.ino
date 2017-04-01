@@ -8,6 +8,12 @@ Esp1wire::Esp1wire() {
 void Esp1wire::testData() {
 // test crap
 
+// *** address crc test ***
+//uint8_t address[8] = { 0x1d, 0xa2, 0x00, 0x00, 0x00, 0x00, 0x01 , 0xaf };
+//uint8_t crc = OneWire::crc8(address, 7);
+//Serial.println("testData: " + HelperDevice::getOneWireDeviceID(address) + ", crc 0x" + String(crc, HEX) + " " + String(crc == address[7] ? "ok" : "wrong"));
+
+// *** runtime test - number conversion ***
 //  uint8_t data[2] = { 0xFF, 0x5E };
 //  int16_t fpTemperature =
 //    (((int16_t) data[0]) << 11) |
@@ -269,7 +275,7 @@ void Esp1wire::Busmaster::wireResetSearch() {
 }
 
 void Esp1wire::Busmaster::target_search(OneWireDeviceType oneWireDeviceType) {
-  searchAddress[0] = DS2406;
+  searchAddress[0] = oneWireDeviceType;
   searchLastDiscrepancy = 64;
 }
 
@@ -520,8 +526,11 @@ Esp1wire::BusIC::BusIC(Busmaster *busmaster) {
 
 #ifdef _DEBUG_DUMMY_DEVICES
   // dummy battery
-  uint8_t addr[8] = { 0x26, 0xe4, 0x21, 0x71, 0x01, 0x00, 0x00, 0x2d };
-  deviceDetected(addr);
+  uint8_t batt[8] = { 0x26, 0xe4, 0x21, 0x71, 0x01, 0x00, 0x00, 0x2d };
+  deviceDetected(batt);
+//  // dummy counter
+//  uint8_t cnt[8] = { 0x1d, 0xa2, 0x00, 0x00, 0x00, 0x00, 0x01, 0xaf };
+//  deviceDetected(cnt);
 #endif
 }
 
