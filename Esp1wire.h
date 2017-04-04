@@ -49,6 +49,7 @@ class Esp1wire {
       , DS1822                = 0x22
       , DS2438                = 0x26
       , DS18B20               = 0x28
+      , DS2408                = 0x29
       , DS1825                = 0x3B
       , DS28EA00              = 0x42
     };

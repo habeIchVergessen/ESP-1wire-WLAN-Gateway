@@ -9,9 +9,12 @@ void Esp1wire::testData() {
 // test crap
 
 // *** address crc test ***
-//uint8_t address[8] = { 0x1d, 0xa2, 0x00, 0x00, 0x00, 0x00, 0x01 , 0xaf };
+//uint8_t address[8] = { 0x1d, 0xa2, 0x00, 0x00, 0x00, 0x01, 0x00 , 0x35 };
 //uint8_t crc = OneWire::crc8(address, 7);
 //Serial.println("testData: " + HelperDevice::getOneWireDeviceID(address) + ", crc 0x" + String(crc, HEX) + " " + String(crc == address[7] ? "ok" : "wrong"));
+//uint8_t address2[8] = { 0x29, 0xa3, 0x00, 0x00, 0x00, 0x00, 0x01, 0x78 };
+//crc = OneWire::crc8(address2, 7);
+//Serial.println("testData: " + HelperDevice::getOneWireDeviceID(address2) + ", crc 0x" + String(crc, HEX) + " " + String(crc == address2[7] ? "ok" : "wrong"));
 
 // *** runtime test - number conversion ***
 //  uint8_t data[2] = { 0xFF, 0x5E };
@@ -484,6 +487,7 @@ Esp1wire::DeviceType Esp1wire::Bus::getDeviceType(uint8_t *address) {
       deviceType = DeviceTypeTemperature;
       break;
     case DS2406:
+//    case DS2408:
       deviceType = DeviceTypeSwitch;
       break;
     case DS2423:
@@ -812,6 +816,9 @@ String Esp1wire::Device::getName() {
     case DS2406:
       return F("DS2406");
       break;
+//    case DS2408:
+//      return F("DS2408");
+//      break;
     case DS2423:
       return F("DS2423");
       break;
@@ -1516,7 +1523,7 @@ bool Esp1wire::DeviceFilter::hasNext() {
     mStarted = true;
     initBus(false);
 
-    if (deviceMatchFilter())          // point to matching device
+    if (mCurrentDeviceList != NULL && deviceMatchFilter())          // point to matching device
       return true;
   }
 
