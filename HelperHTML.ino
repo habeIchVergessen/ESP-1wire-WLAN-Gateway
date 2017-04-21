@@ -31,7 +31,7 @@ String htmlBody(String html) {
   html.replace("\n", "<br>");
   doc += html;
   // dialog crap
-  doc += F("<div id=\"mD\"><center><div id=\"mDC\"><p id=\"mDCC\"></p><p id=\"mDCB\"><a class=\"dc\" onclick=\"javascript:modDlg(false, true)\">Save</a><a class=\"dc\" onclick=\"javascript:modDlg(false)\">Close</a></p></div></center></div>");
+  doc += F("<div id=\"mD\"><center><div id=\"mDC\"><p id=\"mDCC\"></p><p id=\"mDCB\"><a class=\"dc\" onclick=\"javascript:modDlg(false, true)\">Ok</a><a class=\"dc\" onclick=\"javascript:modDlg(false)\">Cancel</a></p></div></center></div>");
   doc += F("</div></center></body></html>");
 
   return doc;

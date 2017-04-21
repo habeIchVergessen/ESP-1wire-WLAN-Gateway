@@ -43,7 +43,8 @@ class Esp1wire {
     };
 
     enum OneWireDeviceType : byte {
-        DS18S20               = 0x10  // also DS1820
+        DS1990                = 0x01  // also DS2401
+      , DS18S20               = 0x10  // also DS1820
       , DS2406                = 0x12  // also DS2407
       , DS2423                = 0x1D
       , DS1822                = 0x22
@@ -101,7 +102,7 @@ class Esp1wire {
         void            wireReadBytes(uint8_t *data, uint16_t len);
 
         void            wireResetSearch();
-        bool            wireSearch(uint8_t *address, bool alarm=false, DeviceType targetSearch=DeviceTypeAll);
+        bool            wireSearch(uint8_t *address, bool alarm=false);
         void            wireStrongPullup(bool pullup);
 
       private:
@@ -146,6 +147,7 @@ class Esp1wire {
         virtual bool    reset();
         virtual bool    resetSearch();
         virtual bool    alarmSearch(DeviceType targetSearch=DeviceTypeAll);
+        virtual bool    alarmSearchIntern(DeviceType targetSearch);
         virtual void    wireResetSearch();
         virtual void    wireSelect(uint8_t *address);
         virtual void    wireWriteByte(uint8_t b);
@@ -184,6 +186,7 @@ class Esp1wire {
         bool reset() override;
         bool resetSearch() override;
         bool alarmSearch(DeviceType targetSearch) override;
+        bool alarmSearchIntern(DeviceType targetSearch) override;
         bool selectChannel();
         void wireResetSearch() override;
         void wireSelect(uint8_t *address) override;
@@ -211,11 +214,13 @@ class Esp1wire {
         bool resetSearch() override;
         void wireResetSearch() override;
         bool alarmSearch(DeviceType targetSearch) override;
+        bool alarmSearchIntern(DeviceType targetSearch) override;
         void wireSelect(uint8_t *address) override;
         void wireWriteByte(uint8_t b) override;
         uint8_t wireReadBit() override;
         void wireReadBytes(uint8_t *data, uint16_t len) override;
         void setPowerSupply(bool power) override;
+        void search();
     };
 
   protected:
@@ -256,9 +261,15 @@ class Esp1wire {
         };
 
         enum OneWireSwitchCommands : byte {
+        // DS2406
           owscWriteStatus       = 0x55  // write status memory (8 bytes + crc16)
         , owscReadStatus        = 0xAA  // read status memory (8 bytes + crc16)
         , owscChannelAccess     = 0xF5  // read/write channel access byte/config
+        // DS2408
+        , owscChannelAccessWrite= 0x5A  // channel access write
+        , owscWriteCondSearch   = 0xCC  // write cond. search
+        , owscResetActLatches   = 0xC3  // reset Activity Latches
+        , owscReadPioRegisters  = 0xF0  // read PIO reagisters
         };
 
         enum OneWireCounterCommands : byte {
@@ -373,6 +384,11 @@ class Esp1wire {
       bool setConditionalSearch(ConditionalSearchPolarity csPolarity, ConditionalSearchSourceSelect csSourceSelect, ConditionalSearchChannelSelect csChannelSelect, ChannelFlipFlop channelFlipFlop);
       bool resetAlarm(SwitchChannelStatus *channelStatus);
 
+      // DS2408
+      bool readChannelAccess(uint8_t data[1]);
+      bool writeChannelAccess(uint8_t data[1]);
+      bool setConditionalSearch(uint8_t data[3]);
+      
       void readConfig();
 
     protected:
@@ -587,7 +603,7 @@ class Esp1wire {
       static String     getOneWireDeviceID(uint8_t *address);
       static bool       isConversionComplete(Bus *bus);
     };
-    
+
     // class HelperTemperatureDevice
     class HelperTemperatureDevice : public TemperatureDevice
     {
@@ -604,8 +620,21 @@ class Esp1wire {
     class HelperSwitchDevice : public SwitchDevice {
     public:
       static bool readStatus(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
-      static bool writeStatus(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool writeStatus(Bus *bus, uint8_t *address, uint8_t data[3]);
       static bool channelAccessInfo(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      static bool readChannelAccess(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool writeChannelAccess(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool setConditionalSearch(Bus *bus, uint8_t *address, uint8_t data[3]);
+    protected:
+      static bool readStatusDS2406(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
+      static bool writeStatusDS2406(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool writeStatusDS2408(Bus *bus, uint8_t *address, uint8_t data[3]);
+      static bool channelAccessInfoDS2406(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      static bool channelAccessInfoDS2408(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      static bool readChannelAccessDS2408(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool writeChannelAccessDS2408(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool resetActivityLatchesDS2408(Bus *bus, uint8_t *address);
+      static bool setConditionalSearchDS2408(Bus *bus, uint8_t *address, uint8_t data[3]);
     };
 
     // HelperCounterDevice 

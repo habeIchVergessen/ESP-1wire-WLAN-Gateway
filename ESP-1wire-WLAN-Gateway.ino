@@ -420,35 +420,42 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
     // switch
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
       EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
-      uint8_t curr = devConf.getValue(F("conditionalSearch")).toInt();
-      html += htmlLabel(F("polarity"), F("Polarity: "));
-      String options = htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityLow), F("LOW"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityLow);
-      options += htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh), F("HIGH"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh);
-      html += htmlSelect(F("polarity"), options) + htmlNewLine();
-      action += F("&polarity=");
-      html += htmlLabel(F("sourceselect"), F("SourceSelect: "));
-      options = htmlOption(String(Esp1wire::SwitchDevice::SourceSelectActivityLatch), F("Activity Latch"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectActivityLatch);
-      options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop), F("Channel FlipFlop"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop);
-      options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectPIOStatus), F("PIO Status"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectPIOStatus);
-      html += htmlSelect(F("sourceselect"), options) + htmlNewLine();
-      action += F("&sourceselect=");
-      html += htmlLabel(F("channelselect"), F("ChannelSelect: "));
-      options = htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectDisabled), F("Disabled"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectDisabled);
-      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectA), F("A"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectA);
-      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectB), F("B"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectB);
-      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectBoth), F("Both"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectBoth);
-      html += htmlSelect(F("channelselect"), options) + htmlNewLine();
-      action += F("&channelselect=");
-      html += htmlLabel(F("channelflipflop"), F("ChannelFlipFlop: "));
-      options = htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopA), F("A"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopA);
-      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopB), F("B"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopB);
-      options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopBoth), F("Both"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopBoth);
-      html += htmlSelect(F("channelflipflop"), options);
-      action += F("&channelflipflop=");
-      html = htmlFieldSet(html, F("ConditionalSearch"));
-      html += htmlLabel(F("customName"), F("custom name: "));
-      html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
-      action += F("&customName=");
+      // DS2406
+      if (device->getOneWireDeviceType() == Esp1wire::DS2406) {
+        uint8_t curr = devConf.getValue(F("conditionalSearch")).toInt();
+        html += htmlLabel(F("polarity"), F("Polarity: "));
+        String options = htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityLow), F("LOW"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityLow);
+        options += htmlOption(String(Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh), F("HIGH"), (curr & 0x01) == Esp1wire::SwitchDevice::ConditionalSearchPolarityHigh);
+        html += htmlSelect(F("polarity"), options) + htmlNewLine();
+        action += F("&polarity=");
+        html += htmlLabel(F("sourceselect"), F("SourceSelect: "));
+        options = htmlOption(String(Esp1wire::SwitchDevice::SourceSelectActivityLatch), F("Activity Latch"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectActivityLatch);
+        options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop), F("Channel FlipFlop"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop);
+        options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectPIOStatus), F("PIO Status"), (curr & 0x06) == Esp1wire::SwitchDevice::SourceSelectPIOStatus);
+        html += htmlSelect(F("sourceselect"), options) + htmlNewLine();
+        action += F("&sourceselect=");
+        html += htmlLabel(F("channelselect"), F("ChannelSelect: "));
+        options = htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectDisabled), F("Disabled"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectDisabled);
+        options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectA), F("A"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectA);
+        options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectB), F("B"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectB);
+        options += htmlOption(String(Esp1wire::SwitchDevice::ChannelSelectBoth), F("Both"), (curr & 0x18) == Esp1wire::SwitchDevice::ChannelSelectBoth);
+        html += htmlSelect(F("channelselect"), options) + htmlNewLine();
+        action += F("&channelselect=");
+        html += htmlLabel(F("channelflipflop"), F("ChannelFlipFlop: "));
+        options = htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopA), F("A"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopA);
+        options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopB), F("B"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopB);
+        options += htmlOption(String(Esp1wire::SwitchDevice::ChannelFlipFlopBoth), F("Both"), (curr & 0x60) == Esp1wire::SwitchDevice::ChannelFlipFlopBoth);
+        html += htmlSelect(F("channelflipflop"), options);
+        action += F("&channelflipflop=");
+        html = htmlFieldSet(html, F("ConditionalSearch"));
+        html += htmlLabel(F("customName"), F("custom name: "));
+        html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+        action += F("&customName=");
+      }
+      // DS2408
+      if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
+        html=F("not implemented yet");
+      }
     }
     // battery
     if (device->getDeviceType() == Esp1wire::DeviceTypeBattery) {
@@ -495,34 +502,43 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
 
     // SwitchDevice
     if (device->getDeviceType() == Esp1wire::DeviceTypeSwitch) {
-      int8_t polarity = server->arg(F("polarity")).toInt() & 0x01;
-      int8_t sourceselect = server->arg(F("sourceselect")).toInt() & 0x06;
-      int8_t channelselect = server->arg(F("channelselect")).toInt() & 0x18;
-      int8_t channelflipflop = server->arg(F("channelflipflop")).toInt() & 0x60;
-
-      switch(sourceselect) {
-        case Esp1wire::SwitchDevice::SourceSelectActivityLatch:
-        case Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop:
-        case Esp1wire::SwitchDevice::SourceSelectPIOStatus:
-          break;
-        default:
-          *resultCode = 403;
-          return F("wrong value for source select"); // SourceSelect: invalid value report Error
-          break;
+      // DS2406
+      if (device->getOneWireDeviceType() == Esp1wire::DS2406) {
+        int8_t polarity = server->arg(F("polarity")).toInt() & 0x01;
+        int8_t sourceselect = server->arg(F("sourceselect")).toInt() & 0x06;
+        int8_t channelselect = server->arg(F("channelselect")).toInt() & 0x18;
+        int8_t channelflipflop = server->arg(F("channelflipflop")).toInt() & 0x60;
+  
+        switch(sourceselect) {
+          case Esp1wire::SwitchDevice::SourceSelectActivityLatch:
+          case Esp1wire::SwitchDevice::SourceSelectChannelFlipFlop:
+          case Esp1wire::SwitchDevice::SourceSelectPIOStatus:
+            break;
+          default:
+            *resultCode = 403;
+            return F("wrong value for source select"); // SourceSelect: invalid value report Error
+            break;
+        }
+        
+        EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+        devConf.setValue(F("conditionalSearch"), String(channelflipflop | channelselect | sourceselect | polarity));
+  
+        if (server->arg(F("customName")) != "")
+          devConf.setValue(F("customName"), server->arg(F("customName")));
+        else
+          devConf.unsetValue(F("customName"));
+  
+        if (devConf.hasChanged()) {
+          devConf.saveToFile();
+          ((Esp1wire::SwitchDevice*)device)->readConfig();
+        }
       }
-      
-      EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
-      devConf.setValue(F("conditionalSearch"), String(channelflipflop | channelselect | sourceselect | polarity));
-
-      if (server->arg(F("customName")) != "")
-        devConf.setValue(F("customName"), server->arg(F("customName")));
-      else
-        devConf.unsetValue(F("customName"));
-
-      if (devConf.hasChanged()) {
-        devConf.saveToFile();
-        ((Esp1wire::SwitchDevice*)device)->readConfig();
+      // DS2408
+      if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
       }
+
+      *resultCode = 200;
+      result = F("ok");
     }
 
     // BatteryDevice
@@ -699,7 +715,36 @@ String handleScheduleList() {
 }
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
+  Esp1wire::DeviceFilter df = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
+  Esp1wire::Device *device;
+  
   switch (r) {
+#ifdef _DEBUG_TEST_DATA
+    case 'c': // test data
+    case 't': // test data
+    case 'w': // test data
+      df = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
+      while (df.hasNext()) {
+        device = df.getNextDevice();
+        if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
+          if (r=='w') {
+            uint8_t data[1] = { 0x00 };
+            bool result = ((Esp1wire::SwitchDevice*)device)->readChannelAccess(data);
+            Serial.println("readChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
+            data[0] = ~data[0];
+            result = ((Esp1wire::SwitchDevice*)device)->writeChannelAccess(data);
+            Serial.println("writeChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
+          }
+          if (r=='c') {
+            uint8_t condSearch[3] = { 0x12, 0x34, 0x01 };
+            ((Esp1wire::SwitchDevice*)device)->setConditionalSearch(condSearch);
+          }
+          Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
+          ((Esp1wire::SwitchDevice*)device)->resetAlarm(&channelStatus);
+        }
+      }
+      break;
+#endif
 #ifdef _ESP_ME_SUPPORT
     case 'm': // Aussen klingeln Anfang
       Serial.print(F("send: monitor ein "));
