@@ -22,21 +22,29 @@ void blinkLed(byte cnt, byte microseconds) {
   }
 }
 
-uint16_t  uptimeDays = 0;
-uint8_t   lastDays = 0;
+uint16_t  espToolsUptimeDays = 0;
+unsigned long espToolsLastMillis = 0;
+
+void loopEspTools() {
+  unsigned long done, currMillis = millis();
+  if (currMillis < espToolsLastMillis)
+    done = 0xFFFFFFFF - espToolsLastMillis + currMillis;
+  else
+    done = currMillis - espToolsLastMillis;
+
+  if (done >= 86400000) {
+    espToolsUptimeDays++;
+    espToolsLastMillis += 86400000;
+  }
+}
 
 String uptime() {
   String result = "";
 
   unsigned long uptime = (millis() / 1000);
 
-  uint16_t days = uptime / 86400;
-  if (days != lastDays) {
-    lastDays = days;
-    uptimeDays++;
-  }
-  if (uptimeDays > 0)
-    result += String(uptimeDays) + " day(s) ";
+  if (espToolsUptimeDays > 0)
+    result += String(espToolsUptimeDays) + "d, ";
   uptime %= 86400;
   uint8_t hours = uptime / 3600;
   result += String(hours < 10 ? String("0") + hours : hours) + ":";

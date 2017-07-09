@@ -28,35 +28,37 @@ class Esp1wire {
     class TemperatureDeviceFilter;
     class AlarmFilter;
 
-    enum BusmasterType {
-        DS2482_100            = (byte)1
-      , DS2482_800            = (byte)2
+    enum BusmasterType : byte {
+        DS2482_100            = 1
+      , DS2482_800            = 2
     };
 
-    enum DeviceType {
-        DeviceTypeUnsupported = (byte)0x01
-      , DeviceTypeTemperature = (byte)0x02
-      , DeviceTypeSwitch      = (byte)0x04
-      , DeviceTypeCounter     = (byte)0x08
-      , DeviceTypeBattery     = (byte)0x12  // incl. temperature sensor too
-      , DeviceTypeAll         = (byte)0xFF
+    enum DeviceType : byte {
+        DeviceTypeUnsupported = 0x01
+      , DeviceTypeTemperature = 0x02
+      , DeviceTypeSwitch      = 0x04
+      , DeviceTypeCounter     = 0x08
+      , DeviceTypeBattery     = 0x12  // incl. temperature sensor too
+      , DeviceTypeAll         = 0xFF
     };
 
-    enum OneWireDeviceType {
-        DS18S20               = (byte)0x10  // also DS1820
-      , DS2406                = (byte)0x12  // also DS2407
-      , DS2423                = (byte)0x1D
-      , DS1822                = (byte)0x22
-      , DS2438                = (byte)0x26
-      , DS18B20               = (byte)0x28
-      , DS1825                = (byte)0x3B
-      , DS28EA00              = (byte)0x42
+    enum OneWireDeviceType : byte {
+        DS1990                = 0x01  // also DS2401
+      , DS18S20               = 0x10  // also DS1820
+      , DS2406                = 0x12  // also DS2407
+      , DS2423                = 0x1D
+      , DS1822                = 0x22
+      , DS2438                = 0x26
+      , DS18B20               = 0x28
+      , DS2408                = 0x29
+      , DS1825                = 0x3B
+      , DS28EA00              = 0x42
     };
 
-    enum OneWireCommands {
-        owcSkip               = (byte)0xCC  // broadcast
-      , owcNormalSearch       = (byte)0xF0  // Query bus for all devices
-      , owcAlarmSearch        = (byte)0xEC  // Query bus for devices with an alarm condition
+    enum OneWireCommands : byte {
+        owcSkip               = 0xCC  // broadcast
+      , owcNormalSearch       = 0xF0  // Query bus for all devices
+      , owcAlarmSearch        = 0xEC  // Query bus for devices with an alarm condition
     };
 
     Esp1wire();
@@ -75,12 +77,12 @@ class Esp1wire {
 #endif
 
   protected:
-    enum statusBits {
-        statusParasiteRead  = (byte)0x01
-      , statusParasiteOn    = (byte)0x02
-      , statusResolution    = (byte)0x0C  // 2 bits
-      , statusAlarm         = (byte)0x10
-      , statusBattVdd       = (byte)0x20  // read VDD too
+    enum statusBits : byte {
+        statusParasiteRead  = 0x01
+      , statusParasiteOn    = 0x02
+      , statusResolution    = 0x0C  // 2 bits
+      , statusAlarm         = 0x10
+      , statusBattVdd       = 0x20  // read VDD too
     };
 
     // class Busmaster
@@ -100,7 +102,7 @@ class Esp1wire {
         void            wireReadBytes(uint8_t *data, uint16_t len);
 
         void            wireResetSearch();
-        bool            wireSearch(uint8_t *address, bool alarm=false, DeviceType targetSearch=DeviceTypeAll);
+        bool            wireSearch(uint8_t *address, bool alarm=false);
         void            wireStrongPullup(bool pullup);
 
       private:
@@ -145,6 +147,7 @@ class Esp1wire {
         virtual bool    reset();
         virtual bool    resetSearch();
         virtual bool    alarmSearch(DeviceType targetSearch=DeviceTypeAll);
+        virtual bool    alarmSearchIntern(DeviceType targetSearch);
         virtual void    wireResetSearch();
         virtual void    wireSelect(uint8_t *address);
         virtual void    wireWriteByte(uint8_t b);
@@ -183,6 +186,7 @@ class Esp1wire {
         bool reset() override;
         bool resetSearch() override;
         bool alarmSearch(DeviceType targetSearch) override;
+        bool alarmSearchIntern(DeviceType targetSearch) override;
         bool selectChannel();
         void wireResetSearch() override;
         void wireSelect(uint8_t *address) override;
@@ -210,11 +214,13 @@ class Esp1wire {
         bool resetSearch() override;
         void wireResetSearch() override;
         bool alarmSearch(DeviceType targetSearch) override;
+        bool alarmSearchIntern(DeviceType targetSearch) override;
         void wireSelect(uint8_t *address) override;
         void wireWriteByte(uint8_t b) override;
         uint8_t wireReadBit() override;
         void wireReadBytes(uint8_t *data, uint16_t len) override;
         void setPowerSupply(bool power) override;
+        void search();
     };
 
   protected:
@@ -238,38 +244,44 @@ class Esp1wire {
         void          setIgnoreAlarmSearch(bool ignore) { if (ignore) mStatus |= statusAlarm; else mStatus &= ~statusAlarm; };
 
       protected:
-        enum OneWireTemperatureCommands {
-          owtcStartConversion   = (byte)0x44  // Tells device to take a temperature reading and put it on the scratchpad
-        , owtcCopyScratch       = (byte)0x48  // Copy EEPROM
-        , owtcWriteScratch      = (byte)0x4E  // Write to EEPROM
-        , owtcReadPowerSupply   = (byte)0xB4  // Determine if device needs parasite power
-        , owtcRecallScratch     = (byte)0xB8  // Reload from last known
-        , owtcReadScratch       = (byte)0xBE  // Read EEPROM
+        enum OneWireTemperatureCommands : byte {
+          owtcStartConversion   = 0x44  // Tells device to take a temperature reading and put it on the scratchpad
+        , owtcCopyScratch       = 0x48  // Copy EEPROM
+        , owtcWriteScratch      = 0x4E  // Write to EEPROM
+        , owtcReadPowerSupply   = 0xB4  // Determine if device needs parasite power
+        , owtcRecallScratch     = 0xB8  // Reload from last known
+        , owtcReadScratch       = 0xBE  // Read EEPROM
         };
 
-        enum OneWireTemperatureResolutions {
-          owtrResolution9bit    = (byte)0x1F
-        , owtrResolution10bit   = (byte)0x3F
-        , owtrResolution11bit   = (byte)0x5F
-        , owtrResolution12bit   = (byte)0x7F
+        enum OneWireTemperatureResolutions : byte {
+          owtrResolution9bit    = 0x1F
+        , owtrResolution10bit   = 0x3F
+        , owtrResolution11bit   = 0x5F
+        , owtrResolution12bit   = 0x7F
         };
 
-        enum OneWireSwitchCommands {
-          owscWriteStatus       = (byte)0x55  // write status memory (8 bytes + crc16)
-        , owscReadStatus        = (byte)0xAA  // read status memory (8 bytes + crc16)
-        , owscChannelAccess     = (byte)0xF5  // read/write channel access byte/config
+        enum OneWireSwitchCommands : byte {
+        // DS2406
+          owscWriteStatus       = 0x55  // write status memory (8 bytes + crc16)
+        , owscReadStatus        = 0xAA  // read status memory (8 bytes + crc16)
+        , owscChannelAccess     = 0xF5  // read/write channel access byte/config
+        // DS2408
+        , owscChannelAccessWrite= 0x5A  // channel access write
+        , owscWriteCondSearch   = 0xCC  // write cond. search
+        , owscResetActLatches   = 0xC3  // reset Activity Latches
+        , owscReadPioRegisters  = 0xF0  // read PIO reagisters
         };
 
-        enum OneWireCounterCommands {
-          owccReadMemoryCounter = (byte)0xA5  // read status memory (8 bytes + crc16)
+        enum OneWireCounterCommands : byte {
+          owccReadMemoryCounter = 0xA5  // read status memory (8 bytes + crc16)
         };
 
-        enum OneWireBatteryCommands {
-          owbcStartConversionT  = (byte)0x44  // Tells device to take a temperature reading and put it on the scratchpad
-        , owbcWriteScratch      = (byte)0x4E  // Write EEPROM
-        , owbcStartConversionV  = (byte)0xB4  // Tells device to take a voltage reading and put it on the scratchpad
-        , owbcRecallMemory      = (byte)0xB8  // load to scratch
-        , owbcReadScratch       = (byte)0xBE  // Read EEPROM
+        enum OneWireBatteryCommands : byte {
+          owbcStartConversionT  = 0x44  // Tells device to take a temperature reading and put it on the scratchpad
+        , owbcWriteScratch      = 0x4E  // Write EEPROM
+        , owbcStartConversionV  = 0xB4  // Tells device to take a voltage reading and put it on the scratchpad
+        , owbcRecallMemory      = 0xB8  // load to scratch
+        , owbcReadScratch       = 0xBE  // Read EEPROM
         };
 
         uint8_t     mAddress[8];
@@ -285,12 +297,12 @@ class Esp1wire {
     class TemperatureDevice : public Device
     {
       public:
-        enum TemperatureResolution {
-            resolutionUnknown = (byte)0xFF
-          , resolution9bit    = (byte)0x00
-          , resolution10bit   = (byte)0x04
-          , resolution11bit   = (byte)0x08
-          , resolution12bit   = (byte)0x0C
+        enum TemperatureResolution : byte {
+            resolutionUnknown = 0xFF
+          , resolution9bit    = 0x00
+          , resolution10bit   = 0x04
+          , resolution11bit   = 0x08
+          , resolution12bit   = 0x0C
         };
 
         TemperatureDevice();
@@ -305,16 +317,16 @@ class Esp1wire {
 
       protected:
         // Scratchpad locations
-        enum ScratchPadFields {
-          spfLSB          = (byte)0
-        , spfMSB          = (byte)1
-        , spfHighAlarm    = (byte)2
-        , spfLowAlarm     = (byte)3
-        , spfConfig       = (byte)4
-        , spfInternal     = (byte)5
-        , spfCntRemain    = (byte)6
-        , spfCntPerC      = (byte)7
-        , spfCRC          = (byte)8
+        enum ScratchPadFields : byte {
+          spfLSB          = 0
+        , spfMSB          = 1
+        , spfHighAlarm    = 2
+        , spfLowAlarm     = 3
+        , spfConfig       = 4
+        , spfInternal     = 5
+        , spfCntRemain    = 6
+        , spfCntPerC      = 7
+        , spfCRC          = 8
         };
 
         bool                    readScratch(uint8_t data[9]);
@@ -325,28 +337,28 @@ class Esp1wire {
     // class SwitchDevice
     class SwitchDevice : public Device {
     public:
-      enum ConditionalSearchPolarity {
-        ConditionalSearchPolarityLow  = (byte)0x00
-      , ConditionalSearchPolarityHigh = (byte)0x01
+      enum ConditionalSearchPolarity : byte {
+        ConditionalSearchPolarityLow  = 0x00
+      , ConditionalSearchPolarityHigh = 0x01
       };
       
-      enum ConditionalSearchSourceSelect {
-        SourceSelectActivityLatch   = (byte)0x02
-      , SourceSelectChannelFlipFlop = (byte)0x04
-      , SourceSelectPIOStatus       = (byte)0x06
+      enum ConditionalSearchSourceSelect : byte {
+        SourceSelectActivityLatch   = 0x02
+      , SourceSelectChannelFlipFlop = 0x04
+      , SourceSelectPIOStatus       = 0x06
       };
 
-      enum ConditionalSearchChannelSelect {
-        ChannelSelectDisabled = (byte)0x00
-      , ChannelSelectA        = (byte)0x08
-      , ChannelSelectB        = (byte)0x10
-      , ChannelSelectBoth     = (byte)0x18
+      enum ConditionalSearchChannelSelect : byte {
+        ChannelSelectDisabled = 0x00
+      , ChannelSelectA        = 0x08
+      , ChannelSelectB        = 0x10
+      , ChannelSelectBoth     = 0x18
       };
 
-      enum ChannelFlipFlop {
-        ChannelFlipFlopA            = (byte)0x20
-      , ChannelFlipFlopB            = (byte)0x40
-      , ChannelFlipFlopBoth         = (byte)0x60
+      enum ChannelFlipFlop : byte {
+        ChannelFlipFlopA            = 0x20
+      , ChannelFlipFlopB            = 0x40
+      , ChannelFlipFlopBoth         = 0x60
       };
 
       typedef struct __attribute__((packed)) SwitchChannelStatus
@@ -372,68 +384,73 @@ class Esp1wire {
       bool setConditionalSearch(ConditionalSearchPolarity csPolarity, ConditionalSearchSourceSelect csSourceSelect, ConditionalSearchChannelSelect csChannelSelect, ChannelFlipFlop channelFlipFlop);
       bool resetAlarm(SwitchChannelStatus *channelStatus);
 
+      // DS2408
+      bool readChannelAccess(uint8_t data[1]);
+      bool writeChannelAccess(uint8_t data[1]);
+      bool setConditionalSearch(uint8_t data[3]);
+      
       void readConfig();
 
     protected:
       // Status locations
-      enum StatusMemoryFields {
-        smfStatus       = (byte)7
-      , smfCRC0         = (byte)8
-      , smfCRC1         = (byte)9
+      enum StatusMemoryFields : byte {
+        smfStatus       = 7
+      , smfCRC0         = 8
+      , smfCRC1         = 9
       };
 
-      enum StatusMemoryByteFields {
-        smbfPolarity    = (byte)0x01
-      , smbfSrcSelA     = (byte)0x02
-      , smbfSrcSelB     = (byte)0x04
-      , smbfChSelPioA   = (byte)0x08
-      , smbfChSelPioB   = (byte)0x10
-      , smbfPioA        = (byte)0x20
-      , smbfPioB        = (byte)0x40
-      , smbfPowerSupply = (byte)0x80
+      enum StatusMemoryByteFields : byte {
+        smbfPolarity    = 0x01
+      , smbfSrcSelA     = 0x02
+      , smbfSrcSelB     = 0x04
+      , smbfChSelPioA   = 0x08
+      , smbfChSelPioB   = 0x10
+      , smbfPioA        = 0x20
+      , smbfPioB        = 0x40
+      , smbfPowerSupply = 0x80
       };
 
       // Channel Configuration Byte
-      enum ChannelConfigByteFields {
+      enum ChannelConfigByteFields : byte {
       // ccbfCRC[0|1] see ChannelConfigCRC (2 bits)
       // ccbfCHS[0|1] see ChannelConfigCHS  (2 bits)
       // ccbfIC ccbfTOG ccbfIM see ChannelConfigImTog (3 bits)
-        ccbfALR         = (byte)0x80
+        ccbfALR         = 0x80
       };
 
-      enum ChannelInfoByteFields {
-        cibfFlipFlopQA  = (byte)0x01
-      , cibfFlipFlopQB  = (byte)0x02
-      , cibfSenseLevelA = (byte)0x04
-      , cibfSenseLevelB = (byte)0x08
-      , cibfActivLatchA = (byte)0x10
-      , cibfActivLatchB = (byte)0x20
-      , cibfNoChannels  = (byte)0x40
-      , cibfPowerSupply = (byte)0x80
+      enum ChannelInfoByteFields : byte {
+        cibfFlipFlopQA  = 0x01
+      , cibfFlipFlopQB  = 0x02
+      , cibfSenseLevelA = 0x04
+      , cibfSenseLevelB = 0x08
+      , cibfActivLatchA = 0x10
+      , cibfActivLatchB = 0x20
+      , cibfNoChannels  = 0x40
+      , cibfPowerSupply = 0x80
       };
 
-      enum ChannelConfigCHS {
-        ccCHSChA        = (byte)0x04
-      , ccCHSChB        = (byte)0x08
-      , ccCHSChBoth     = (byte)0x0C
+      enum ChannelConfigCHS : byte {
+        ccCHSChA        = 0x04
+      , ccCHSChB        = 0x08
+      , ccCHSChBoth     = 0x0C
       };
 
-      enum ChannelConfigCRC {
-        ccCRCNone       = (byte)0x00
-      , ccCRCByte       = (byte)0x01
-      , ccCRC8Bytes     = (byte)0x02
-      , ccCRC32Bytes    = (byte)0x04
+      enum ChannelConfigCRC : byte {
+        ccCRCNone       = 0x00
+      , ccCRCByte       = 0x01
+      , ccCRC8Bytes     = 0x02
+      , ccCRC32Bytes    = 0x04
       };
 
-      enum ChannelConfigImTog {
-        ccImTogReadOne  = (byte)0x40
-      , ccImTogReadBoth = (byte)0x41
-      , ccImTogWriteOne = (byte)0x00
+      enum ChannelConfigImTog : byte {
+        ccImTogReadOne  = 0x40
+      , ccImTogReadBoth = 0x41
+      , ccImTogWriteOne = 0x00
       };
 
-      enum ChannelConfigByte {
-        ccbDefault      = (byte)0x00
-      , ccbReserved     = (byte)0xFF
+      enum ChannelConfigByte : byte {
+        ccbDefault      = 0x00
+      , ccbReserved     = 0xFF
       };
 
       bool              readStatus(SwitchMemoryStatus *memoryStatus);
@@ -465,30 +482,30 @@ class Esp1wire {
       void                    readConfig();
 
     protected:
-      enum      InputSelect {
-        InputSelectVDD        = (byte)0x08
-      , InputSelectVAD        = (byte)0x00
+      enum      InputSelect : byte {
+        InputSelectVDD        = 0x08
+      , InputSelectVAD        = 0x00
       };
       
-      enum ScratchPadPage0Fields {
-        spp0fStatusConfig     = (byte)0
-      , spp0fLSBT             = (byte)1
-      , spp0fMSBT             = (byte)2
-      , spp0fLSBV             = (byte)3
-      , spp0fMSBV             = (byte)4
-      , spp0fLSBC             = (byte)5
-      , spp0fMSBC             = (byte)6
-      , spp0fThreshold        = (byte)7
+      enum ScratchPadPage0Fields : byte {
+        spp0fStatusConfig     = 0
+      , spp0fLSBT             = 1
+      , spp0fMSBT             = 2
+      , spp0fLSBV             = 3
+      , spp0fMSBV             = 4
+      , spp0fLSBC             = 5
+      , spp0fMSBC             = 6
+      , spp0fThreshold        = 7
       };
 
-      enum ScratchPadPage1Fields {
-        spp1fEtm0             = (byte)0
-      , spp1fEtm1             = (byte)1
-      , spp1fEtm2             = (byte)2
-      , spp1fEtm3             = (byte)3
-      , spp1fICA              = (byte)4
-      , spp1fLSBO             = (byte)5
-      , spp1fMSBO             = (byte)6
+      enum ScratchPadPage1Fields : byte {
+        spp1fEtm0             = 0
+      , spp1fEtm1             = 1
+      , spp1fEtm2             = 2
+      , spp1fEtm3             = 3
+      , spp1fICA              = 4
+      , spp1fLSBO             = 5
+      , spp1fMSBO             = 6
       };
 
       bool requestBattery(InputSelect inputSelect, float *voltage, float *current, float *capacity, float resistorSens=0.025);
@@ -536,12 +553,12 @@ class Esp1wire {
     // class Scheduler
     class Scheduler {
     public:
-      enum ScheduleAction {
-        scheduleRequestTemperatues  = (byte)0x00
-      , scheduleRequestBatteries    = (byte)0x01
-      , scheduleReadCounter         = (byte)0x02
-      , scheduleAlarmSearch         = (byte)0x03
-      , scheduleResetSearch         = (byte)0x04
+      enum ScheduleAction : byte {
+        scheduleRequestTemperatues  = 0x00
+      , scheduleRequestBatteries    = 0x01
+      , scheduleReadCounter         = 0x02
+      , scheduleAlarmSearch         = 0x03
+      , scheduleResetSearch         = 0x04
       };
 
       typedef void (*SchedulerCallback) (DeviceType filter);
@@ -586,7 +603,7 @@ class Esp1wire {
       static String     getOneWireDeviceID(uint8_t *address);
       static bool       isConversionComplete(Bus *bus);
     };
-    
+
     // class HelperTemperatureDevice
     class HelperTemperatureDevice : public TemperatureDevice
     {
@@ -603,8 +620,21 @@ class Esp1wire {
     class HelperSwitchDevice : public SwitchDevice {
     public:
       static bool readStatus(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
-      static bool writeStatus(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool writeStatus(Bus *bus, uint8_t *address, uint8_t data[3]);
       static bool channelAccessInfo(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      static bool readChannelAccess(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool writeChannelAccess(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool setConditionalSearch(Bus *bus, uint8_t *address, uint8_t data[3]);
+    protected:
+      static bool readStatusDS2406(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
+      static bool writeStatusDS2406(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool writeStatusDS2408(Bus *bus, uint8_t *address, uint8_t data[3]);
+      static bool channelAccessInfoDS2406(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      static bool channelAccessInfoDS2408(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      static bool readChannelAccessDS2408(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool writeChannelAccessDS2408(Bus *bus, uint8_t *address, uint8_t data[1]);
+      static bool resetActivityLatchesDS2408(Bus *bus, uint8_t *address);
+      static bool setConditionalSearchDS2408(Bus *bus, uint8_t *address, uint8_t data[3]);
     };
 
     // HelperCounterDevice 

@@ -8,6 +8,15 @@ Esp1wire::Esp1wire() {
 void Esp1wire::testData() {
 // test crap
 
+// *** address crc test ***
+//uint8_t address[8] = { 0x1d, 0x3a, 0x00, 0x00, 0x00, 0x00, 0x01 , 0x98 };
+//uint8_t crc = OneWire::crc8(address, 7);
+//Serial.println("testData: " + HelperDevice::getOneWireDeviceID(address) + ", crc 0x" + String(crc, HEX) + " " + String(crc == address[7] ? "ok" : "wrong"));
+//uint8_t address2[8] = { 0x29, 0xa3, 0x00, 0x00, 0x00, 0x00, 0x01, 0x78 };
+//crc = OneWire::crc8(address2, 7);
+//Serial.println("testData: " + HelperDevice::getOneWireDeviceID(address2) + ", crc 0x" + String(crc, HEX) + " " + String(crc == address2[7] ? "ok" : "wrong"));
+
+// *** runtime test - number conversion ***
 //  uint8_t data[2] = { 0xFF, 0x5E };
 //  int16_t fpTemperature =
 //    (((int16_t) data[0]) << 11) |
@@ -136,13 +145,13 @@ Esp1wire::AlarmFilter Esp1wire::alarmSearch(DeviceType targetSearch) {
 
   uint8_t bus = 1;
   while (curr != NULL) {
-#if defined(_DEBUG_TIMING) || defined(_DEBUG_SETUP)
+#if defined(_DEBUG_TIMING)
     Serial.print("bus #" + (String)bus + ": alarm search ");
     unsigned long start = micros();
 #endif
     curr->bus->alarmSearch(targetSearch);
 
-#if defined(_DEBUG_TIMING) || defined(_DEBUG_SETUP)
+#if defined(_DEBUG_TIMING)
     Serial.println(" " + elapTime(start));
 #endif
     curr = curr->next;
@@ -269,7 +278,7 @@ void Esp1wire::Busmaster::wireResetSearch() {
 }
 
 void Esp1wire::Busmaster::target_search(OneWireDeviceType oneWireDeviceType) {
-  searchAddress[0] = DS2406;
+  searchAddress[0] = oneWireDeviceType;
   searchLastDiscrepancy = 64;
 }
 
@@ -288,7 +297,7 @@ uint8_t Esp1wire::Busmaster::busyWait(bool setReadPtr) {
   return status;
 }
 
-bool Esp1wire::Busmaster::wireSearch(uint8_t *address, bool alarm, DeviceType targetSearch) {
+bool Esp1wire::Busmaster::wireSearch(uint8_t *address, bool alarm) {
   uint8_t i;
   uint8_t direction;
   uint8_t last_zero = 0;
@@ -369,6 +378,9 @@ void Esp1wire::Bus::registerTemperatureDevice(bool parasite, uint8_t resolution)
 
 Esp1wire::Device *Esp1wire::Bus::deviceDetected(uint8_t *address) {
   DeviceType deviceType = getDeviceType(address);
+#ifdef _DEBUG_DETECTION
+  Serial.print(HelperDevice::getOneWireDeviceID(address) + " ");
+#endif
 
   if (this->crc8(address, 7) != address[7]) {
 #ifdef _DEBUG_SETUP
@@ -478,6 +490,7 @@ Esp1wire::DeviceType Esp1wire::Bus::getDeviceType(uint8_t *address) {
       deviceType = DeviceTypeTemperature;
       break;
     case DS2406:
+    case DS2408:
       deviceType = DeviceTypeSwitch;
       break;
     case DS2423:
@@ -519,9 +532,15 @@ Esp1wire::BusIC::BusIC(Busmaster *busmaster) {
   mBusmaster = busmaster;
 
 #ifdef _DEBUG_DUMMY_DEVICES
-  // dummy battery
-  uint8_t addr[8] = { 0x26, 0xe4, 0x21, 0x71, 0x01, 0x00, 0x00, 0x2d };
-  deviceDetected(addr);
+//  // dummy battery
+//  uint8_t batt[8] = { 0x26, 0xe4, 0x21, 0x71, 0x01, 0x00, 0x00, 0x2d };
+//  deviceDetected(batt);
+//  // dummy counter
+//  uint8_t cnt[8] = { 0x1d, 0xa2, 0x00, 0x00, 0x00, 0x00, 0x01, 0xaf };
+//  deviceDetected(cnt);
+  // dummy DS2408
+  uint8_t sw8[8] = { 0x29, 0xa3, 0x00, 0x00, 0x00, 0x00, 0x01, 0x78 };
+  deviceDetected(sw8);
 #endif
 }
 
@@ -556,12 +575,21 @@ bool Esp1wire::BusIC::alarmSearch(DeviceType targetSearch) {
   switch (targetSearch) {
     case DeviceTypeSwitch:
       mBusmaster->target_search(DS2406);
+      alarmSearchIntern(targetSearch);
+      wireResetSearch();
+      mBusmaster->target_search(DS2408);
+    default:
+      alarmSearchIntern(targetSearch);
       break;
   }
 
+  return true;
+}
+
+bool Esp1wire::BusIC::alarmSearchIntern(DeviceType targetSearch) {
   uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-  while (mBusmaster->wireSearch(address, true, targetSearch)) {
+  while (mBusmaster->wireSearch(address, true)) {
     // found device that doesn't match family code
     if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
       break;
@@ -645,7 +673,10 @@ bool Esp1wire::BusGPIO::resetSearch() {
   return true;
 }
 
+
 bool Esp1wire::BusGPIO::alarmSearch(DeviceType targetSearch) {
+  currDevice = firstDevice;
+
   if (!mOneWire->reset())
     return false;
   wireResetSearch();
@@ -654,13 +685,21 @@ bool Esp1wire::BusGPIO::alarmSearch(DeviceType targetSearch) {
   switch (targetSearch) {
     case DeviceTypeSwitch:
       mOneWire->target_search(DS2406);
+      alarmSearchIntern(targetSearch);
+      wireResetSearch();
+      mOneWire->target_search(DS2408);
+    default:
+      alarmSearchIntern(targetSearch);
       break;
   }
 
-  uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-  currDevice = firstDevice;
+  return true;
+}
 
-  while (mOneWire->search(address, true)) {
+bool Esp1wire::BusGPIO::alarmSearchIntern(DeviceType targetSearch) {
+  uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  while (mOneWire->search(address, false)) {
     // found device that doesn't match family code
     if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
       break;
@@ -781,9 +820,6 @@ Esp1wire::Device::Device(Bus *bus, uint8_t *address, DeviceType deviceType) {
 }
 
 String Esp1wire::Device::getName() {
-  if (mDeviceType == DeviceTypeUnsupported)
-    return (String)F("unsupported type 0x") + String(mAddress[0], HEX);
-
   switch (mAddress[0]) {
     case DS18S20:
       return F("DS18S20");
@@ -803,15 +839,22 @@ String Esp1wire::Device::getName() {
     case DS2406:
       return F("DS2406");
       break;
+    case DS2408:
+      return F("DS2408"); // unsupported type 
+      break;
     case DS2423:
       return F("DS2423");
       break;
     case DS2438:
       return F("DS2438");
       break;
+    case DS1990:
+      return F("unsupported type DS1990");
+      break;
+    default:
+      return (String)F("unsupported type 0x") + String(mAddress[0], HEX);
+      break;
   }
-
-  return "Device::getName: 0x" + String(mAddress[0], HEX);
 }
 
 String Esp1wire::Device::getOneWireDeviceID() {
@@ -1024,8 +1067,20 @@ bool Esp1wire::SwitchDevice::setConditionalSearch(ConditionalSearchPolarity csPo
   if (mDeviceType != DeviceTypeSwitch)
     return false;
 
-  uint8_t data[1] =  { channelFlipFlop | csChannelSelect | csSourceSelect | csPolarity };
-  return HelperSwitchDevice::writeStatus(mBus, mAddress, data);
+  bool result = false;
+
+  uint8_t data[3] =  { channelFlipFlop | csChannelSelect | csSourceSelect | csPolarity, 0x00, 0x00 };
+  
+  switch(getOneWireDeviceType()) {
+    case DS2406:
+      result = HelperSwitchDevice::writeStatus(mBus, mAddress, data);
+      break;
+    default:
+      Serial.println("SwitchDevice::setConditionalSearch: " + getOneWireDeviceID() + " unsupported");
+      break;
+  }
+
+  return result;
 }
 
 bool Esp1wire::SwitchDevice::resetAlarm(SwitchChannelStatus *channelStatus) {
@@ -1039,11 +1094,24 @@ bool Esp1wire::SwitchDevice::resetAlarm(SwitchChannelStatus *channelStatus) {
   return channelAccessInfo(&resetStatus, true);
 }
 
+// DS2408
+bool Esp1wire::SwitchDevice::readChannelAccess(uint8_t data[1]) {
+  return HelperSwitchDevice::readChannelAccess(mBus, mAddress, data);
+}
+
+bool Esp1wire::SwitchDevice::writeChannelAccess(uint8_t data[1]) {
+  return HelperSwitchDevice::writeChannelAccess(mBus, mAddress, data);
+}
+
+bool Esp1wire::SwitchDevice::setConditionalSearch(uint8_t data[3]) {
+  return HelperSwitchDevice::setConditionalSearch(mBus, mAddress, data);
+}
+
 void Esp1wire::SwitchDevice::readConfig() {
   EspDeviceConfig devConf = espConfig.getDeviceConfig(getOneWireDeviceID());
 
   String value = devConf.getValue(F("conditionalSearch"));
-  if (value != "" && (value.toInt() & 0x7F) != 0) {
+  if (value != "" && getOneWireDeviceType() == DS2406 && (value.toInt() & 0x7F) != 0) {
     uint8_t conSearch[1] = { (value.toInt() & 0x7F) };
 
     if ((conSearch[0] & SourceSelectPIOStatus) != 0)
@@ -1233,6 +1301,19 @@ bool Esp1wire::HelperTemperatureDevice::powerSupply(Bus *bus, uint8_t *address) 
 
 // class HelperSwitchDevice
 bool Esp1wire::HelperSwitchDevice::readStatus(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus) {
+  switch (address[0]) {
+    case DS2406:
+      return HelperSwitchDevice::readStatusDS2406(bus, address, memoryStatus);
+      break;
+    default:
+      Serial.println("HelperSwitchDevice::readStatus: 0x" + String(address[0], HEX) + " unsupported");
+      break;
+  }
+
+  return false;
+}
+
+bool Esp1wire::HelperSwitchDevice::readStatusDS2406(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus) {
   uint8_t cmd[3] = {
     owscReadStatus    // command
     , 0, 0            // address TA1 & TA2
@@ -1264,7 +1345,23 @@ bool Esp1wire::HelperSwitchDevice::readStatus(Bus *bus, uint8_t *address, Switch
   return result;
 }
 
-bool Esp1wire::HelperSwitchDevice::writeStatus(Bus *bus, uint8_t *address, uint8_t data[1]) {
+bool Esp1wire::HelperSwitchDevice::writeStatus(Bus *bus, uint8_t *address, uint8_t data[3]) {
+  switch (address[0]) {
+    case DS2406:
+      return HelperSwitchDevice::writeStatusDS2406(bus, address, data);
+      break;
+    case DS2408:
+      return HelperSwitchDevice::writeStatusDS2408(bus, address, data);
+      break;
+    default:
+      Serial.println("HelperSwitchDevice::writeStatus: 0x" + String(address[0], HEX) + " unsupported");
+      break;
+  }
+
+  return false;
+}
+
+bool Esp1wire::HelperSwitchDevice::writeStatusDS2406(Bus *bus, uint8_t *address, uint8_t data[1]) {
   bool result = false;
 
   uint8_t cmd[3] = {
@@ -1292,7 +1389,38 @@ bool Esp1wire::HelperSwitchDevice::writeStatus(Bus *bus, uint8_t *address, uint8
   return result;
 }
 
+bool Esp1wire::HelperSwitchDevice::writeStatusDS2408(Bus *bus, uint8_t *address, uint8_t data[3]) {
+  uint8_t cmd[3] = {
+    owscWriteCondSearch // command
+  , 0x8B, 0x00          // address TA1 & TA2
+  }, crc[2];
+
+  if (!bus->reset())
+    return false;
+
+  bus->wireSelect(address);
+  bus->wireWriteBytes(cmd, sizeof(cmd));
+  bus->wireWriteBytes(data, 3); // selection, polarity, Control/Status register
+
+  bus->reset();
+
+  return true;
+}
+
 bool Esp1wire::HelperSwitchDevice::channelAccessInfo(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm) {
+  switch (address[0]) {
+    case DS2406:
+      return HelperSwitchDevice::channelAccessInfoDS2406(bus, address, channelStatus, resetAlarm);
+      break;
+    default:
+      return HelperSwitchDevice::channelAccessInfoDS2408(bus, address, channelStatus, resetAlarm);
+      break;
+  }
+
+  return false;
+}
+
+bool Esp1wire::HelperSwitchDevice::channelAccessInfoDS2406(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm) {
   uint8_t cmd[3] = {
     owscChannelAccess       // command
   , ccbDefault, ccbReserved // channel control bytes
@@ -1334,6 +1462,143 @@ bool Esp1wire::HelperSwitchDevice::channelAccessInfo(Bus *bus, uint8_t *address,
     }
   }
     
+  return result;
+}
+
+bool Esp1wire::HelperSwitchDevice::channelAccessInfoDS2408(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm) {
+  uint8_t cmd[3] = {
+    owscReadPioRegisters    // command
+  , 0x88, 0x00              // channel control bytes
+  }, crc[2], data[8];
+
+  if (!bus->reset())
+    return false;
+
+  bus->wireSelect(address);
+  bus->wireWriteBytes(cmd, sizeof(cmd));
+  bus->wireReadBytes(data, 8);  // read 6 bytes + 2 dummy
+  bus->wireReadBytes(crc, 2);   // read crc
+  bool result = bus->reset();
+
+  // commands to crc
+  uint16_t crc16 = bus->crc16(cmd, sizeof(cmd));
+  // data to crc
+  crc16 = ~bus->crc16(data, sizeof(data), crc16);
+
+  result = result && ((crc16 & 0xFF) == crc[0]) && ((crc16 >> 8) == crc[1]);
+
+  Serial.println("HelperSwitchDevice::channelAccessInfoDS2408: 0x" +
+    String(data[0], HEX) + " " +
+    String(data[1], HEX) + " " +
+    String(data[2], HEX) + " " +
+    String(data[3], HEX) + " " +
+    String(data[4], HEX) + " " +
+    String(data[5], HEX) + " " +
+    String(data[6], HEX) + " " +
+    String(data[7], HEX)
+  );
+  if (result) {
+    channelStatus->noChannels = 8;
+  }
+
+  if (resetAlarm)
+    resetActivityLatchesDS2408(bus, address);
+  
+  return result;
+}
+
+bool Esp1wire::HelperSwitchDevice::readChannelAccess(Bus *bus, uint8_t *address, uint8_t data[1]) {
+  switch (address[0]) {
+    case DS2408:
+      return HelperSwitchDevice::readChannelAccessDS2408(bus, address, data);
+      break;
+  }
+
+  return false;
+}
+
+bool Esp1wire::HelperSwitchDevice::readChannelAccessDS2408(Bus *bus, uint8_t *address, uint8_t data[1]) {
+  if (!bus->reset())
+    return false;
+
+  bus->wireSelect(address);
+  bus->wireWriteByte(owscChannelAccess);
+  bus->wireReadBytes(data, 1);
+  bool result = bus->reset();
+
+  return result;
+}
+
+bool Esp1wire::HelperSwitchDevice::writeChannelAccess(Bus *bus, uint8_t *address, uint8_t data[1]) {
+  switch (address[0]) {
+    case DS2408:
+      return HelperSwitchDevice::writeChannelAccessDS2408(bus, address, data);
+      break;
+  }
+
+  return false;
+}
+
+bool Esp1wire::HelperSwitchDevice::writeChannelAccessDS2408(Bus *bus, uint8_t *address, uint8_t data[1]) {
+  uint8_t data2[2] = { data[0], ~data[0] };
+  
+  if (!bus->reset())
+    return false;
+
+  bus->wireSelect(address);
+  bus->wireWriteByte(owscChannelAccessWrite);
+  bus->wireWriteBytes(data2, 2);   // 
+  bus->wireReadBytes(data2, 2);    // 0xAA + PIO pin status
+  bool result = bus->reset();
+
+  result = result && (data2[0] == 0xAA);
+
+  // return PIO pin status
+  data[0] = data2[1];
+
+  return result;
+}
+
+bool Esp1wire::HelperSwitchDevice::resetActivityLatchesDS2408(Bus *bus, uint8_t *address) {
+  uint8_t data[1];
+  
+  if (!bus->reset())
+    return false;
+
+  bus->wireSelect(address);
+  bus->wireWriteByte(owscResetActLatches);
+  bus->wireReadBytes(data, 1);    // 0xAA as response
+  bool result = bus->reset();
+
+  result = result && (data[0] == 0xAA);
+  
+  return result;
+}
+
+bool Esp1wire::HelperSwitchDevice::setConditionalSearch(Bus *bus, uint8_t *address, uint8_t data[3]) {
+  switch (address[0]) {
+    case DS2408:
+      return HelperSwitchDevice::setConditionalSearchDS2408(bus, address, data);
+      break;
+  }
+
+  return false;
+}
+
+bool Esp1wire::HelperSwitchDevice::setConditionalSearchDS2408(Bus *bus, uint8_t *address, uint8_t data[3]) {
+  uint8_t cmd[3] = {
+    owscWriteCondSearch     // command
+  , 0x8B, 0x00              // address
+  };
+
+  if (!bus->reset())
+    return false;
+
+  bus->wireSelect(address);
+  bus->wireWriteBytes(cmd, sizeof(cmd));
+  bus->wireWriteBytes(data, 3);
+  bool result = bus->reset();
+
   return result;
 }
 
@@ -1507,7 +1772,7 @@ bool Esp1wire::DeviceFilter::hasNext() {
     mStarted = true;
     initBus(false);
 
-    if (deviceMatchFilter())          // point to matching device
+    if (mCurrentDeviceList != NULL && deviceMatchFilter())          // point to matching device
       return true;
   }
 

@@ -14,12 +14,14 @@
 #define valueField       F(" value=")
 #define idField          F(" id=")
 #define classField       F(" class=")
+#define onChangeField    F(" onchange=");
 
 // prototypes
 String htmlForm(String html, String pAction, String pMethod, String pID="", String pEnctype="", String pLegend="");
 String htmlInput(String pName, String pType, String pValue, int pMaxLength=0, String pMinNumber="", String pMaxNumber="");
 String htmlFieldSet(String pHtml, String pLegend="");
 String htmlOption(String pValue, String pText, bool pSelected=false);
+String htmlSelect(String pName, String pOptions, String pOnChange="");
 
 String htmlBody(String html) {
   String doc = F("<!DOCTYPE html><html lang=\"de\"><body>");
@@ -29,7 +31,7 @@ String htmlBody(String html) {
   html.replace("\n", "<br>");
   doc += html;
   // dialog crap
-  doc += F("<div id=\"mD\"><center><div id=\"mDC\"><p id=\"mDCC\"></p><p id=\"mDCB\"><a class=\"dc\" onclick=\"javascript:modDlg(false, true)\">Save</a><a class=\"dc\" onclick=\"javascript:modDlg(false)\">Close</a></p></div></center></div>");
+  doc += F("<div id=\"mD\"><center><div id=\"mDC\"><p id=\"mDCC\"></p><p id=\"mDCB\"><a class=\"dc\" onclick=\"javascript:modDlg(false, true)\">Ok</a><a class=\"dc\" onclick=\"javascript:modDlg(false)\">Cancel</a></p></div></center></div>");
   doc += F("</div></center></body></html>");
 
   return doc;
@@ -74,8 +76,7 @@ String flashForm() {
   action += getChipID();
   action += F(".bin");
 
-  String html = htmlLabel("file", "file: ");
-  html += htmlInput("file", "file", "", 0) + htmlNewLine();
+  String html = htmlInput("file", "file", "", 0) + htmlNewLine();
 
   return htmlForm(html, action, "post", "submitForm", "multipart/form-data");
 }
@@ -224,6 +225,10 @@ String htmlAnker(String pId, String pClass, String pText) {
   return result;  
 }
 
+String htmlOption(String pValue, String pText) {
+  return htmlOption(pValue, pText, false);
+}
+
 String htmlOption(String pValue, String pText, bool pSelected) {
   String result = F("<option");
   result += valueField;
@@ -240,11 +245,21 @@ String htmlOption(String pValue, String pText, bool pSelected) {
 }
 
 String htmlSelect(String pName, String pOptions) {
+  return htmlSelect(pName, pOptions, "");
+}
+
+String htmlSelect(String pName, String pOptions, String pOnChange) {
   String result = F("<select");
   result += nameField;
   result += textMark;
   result += pName;
   result += textMark;
+  if (pOnChange != "") {
+    result += onChangeField;
+    result += textMark;
+    result += pOnChange;
+    result += textMark;
+  }
   result += F(">");
   result += pOptions;
   result += F("</select>");
