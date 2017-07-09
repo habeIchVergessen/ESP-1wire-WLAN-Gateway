@@ -9,7 +9,7 @@ void Esp1wire::testData() {
 // test crap
 
 // *** address crc test ***
-//uint8_t address[8] = { 0x1d, 0xa3, 0x00, 0x00, 0x00, 0x00, 0x01 , 0x98 };
+//uint8_t address[8] = { 0x1d, 0x3a, 0x00, 0x00, 0x00, 0x00, 0x01 , 0x98 };
 //uint8_t crc = OneWire::crc8(address, 7);
 //Serial.println("testData: " + HelperDevice::getOneWireDeviceID(address) + ", crc 0x" + String(crc, HEX) + " " + String(crc == address[7] ? "ok" : "wrong"));
 //uint8_t address2[8] = { 0x29, 0xa3, 0x00, 0x00, 0x00, 0x00, 0x01, 0x78 };
@@ -378,6 +378,9 @@ void Esp1wire::Bus::registerTemperatureDevice(bool parasite, uint8_t resolution)
 
 Esp1wire::Device *Esp1wire::Bus::deviceDetected(uint8_t *address) {
   DeviceType deviceType = getDeviceType(address);
+#ifdef _DEBUG_DETECTION
+  Serial.print(HelperDevice::getOneWireDeviceID(address) + " ");
+#endif
 
   if (this->crc8(address, 7) != address[7]) {
 #ifdef _DEBUG_SETUP

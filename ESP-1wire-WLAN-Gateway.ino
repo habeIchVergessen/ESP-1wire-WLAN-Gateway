@@ -21,6 +21,7 @@ bool httpRequestProcessed     = false;
 
 //#define _DEBUG
 #define _DEBUG_SETUP
+#define _DEBUG_DETECTION
 //#define _DEBUG_TIMING
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
