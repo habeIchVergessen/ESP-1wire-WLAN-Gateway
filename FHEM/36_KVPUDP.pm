@@ -165,7 +165,7 @@ sub KVPUDP_PeerIgnored(@) {
   my $Peer = shift @params;
   my $ChipIDList = (@params >= 1 ? shift @params : AttrVal($name, "ChipIDList", undef));
 
-  foreach my $peer (sort keys $hash->{PEERS}) {
+  foreach my $peer (sort keys %{ $hash->{PEERS} }) {
     next if (defined($Peer) && $peer ne $Peer);
 
     my $chipID = $hash->{PEERS}{$peer}{ChipID};
@@ -183,7 +183,7 @@ sub KVPUDP_PeerIgnored(@) {
 sub KVPUDP_RemoveDuplicatedChipID($$$) {
   my ($hash, $peer, $chipID) = @_;
 
-  foreach my $remote (keys $hash->{PEERS}) {
+  foreach my $remote (keys %{ $hash->{PEERS} }) {
     next if ($remote eq $peer);
 
     if (defined($hash->{PEERS}{$remote}{ChipID}) && $hash->{PEERS}{$remote}{ChipID} eq $chipID) {
@@ -218,7 +218,7 @@ sub KVPUDP_Read($)
       Log3 $hash, 3, "KVPUDP_Read: got config $remote";
       my $message = $resp->decoded_content;
       Log3 $name, 3, "got config: " . $message . " (" . $elapsedTime . " ms)";
-      while (my ($key, $val, $toParse) = $message =~ m/(\w+):(\w+[\w\.,=]*)(,(\w+:.*)|$)/g ) {
+      while (my ($key, $val, $toParse) = $message =~ m/(\w+):(\w+[\w\.,=-]*)(,(\w+:.*)|$)/g ) {
 	$hash->{PEERS}{$remote}{$key} = $val;
 	$message = $toParse;
       }
@@ -330,7 +330,7 @@ sub KVPUDP_GetPeerList($) {
 
   my $result = "";
 
-  foreach my $peer (sort keys $hash->{PEERS}) {
+  foreach my $peer (sort keys %{ $hash->{PEERS} }) {
     $result .= "\n\t" . $peer . ": ";;
     if ($hash->{PEERS}{$peer}{Version}) {
       $result .= $hash->{PEERS}{$peer}{Version}
