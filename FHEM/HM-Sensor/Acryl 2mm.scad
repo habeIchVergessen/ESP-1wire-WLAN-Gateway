@@ -14,7 +14,7 @@ module roundedEdge(x=0, y=0, z=-1, a=0, l=30, h=pH+2)
     }
 }
 
-//scale([0.1, 0.1, 0.1])
+scale([0.1, 0.1, 0.1])
 difference() {
 cube([300, 1200, pH], center=false);
 
@@ -69,7 +69,7 @@ roundedEdge(y=1201, a=270);
 
 dH=80;  // gesamt
 
-//scale([0.1, 0.1, 0.1])
+scale([0.1, 0.1, 0.1])
 difference() {
 translate([400, 680, -1])
 cube([300, 520, dH], center=false);
