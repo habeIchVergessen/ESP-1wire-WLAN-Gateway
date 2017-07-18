@@ -201,7 +201,7 @@ sub KVPUDP_Read($)
   my $name= $hash->{NAME};
   my $socket= $hash->{TCPDev};
   my $data;
-  return unless $socket->recv($data, 128);
+  return unless $socket->recv($data, 512);
 
   my $remote = $socket->peerhost();
   my $serviceMsg = ($data eq "REFRESH CONFIG REQUEST");
@@ -219,8 +219,8 @@ sub KVPUDP_Read($)
       my $message = $resp->decoded_content;
       Log3 $name, 3, "got config: " . $message . " (" . $elapsedTime . " ms)";
       while (my ($key, $val, $toParse) = $message =~ m/(\w+):(\w+[\w\.,=-]*)(,(\w+:.*)|$)/g ) {
-	$hash->{PEERS}{$remote}{$key} = $val;
-	$message = $toParse;
+		$hash->{PEERS}{$remote}{$key} = $val;
+		$message = $toParse;
       }
     } else {
       Log3 $hash, 3, "KVPUDP_Read: error reading config $remote (" . $resp->status_line . ")";

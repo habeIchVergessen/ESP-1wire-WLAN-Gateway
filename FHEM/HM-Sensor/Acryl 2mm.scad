@@ -20,7 +20,7 @@ translate([0, 0, -1])
 cube([300, 1200, pH], center=false);
 
 // befestigung
-translate([150, 100, -1])
+translate([150, 105, -1])
 cylinder(r=50, h=pH+2, center=false);
 translate([150, 540, -1])
 cylinder(r=50, h=pH+2, center=false);
@@ -62,37 +62,34 @@ roundedEdge(x=251, y=474, h=6, a=90);
 translate([25, 355, -1])
 cube([kH, 422, kH], center=false);
 
-roundedEdge();
-roundedEdge(x=300, y=-1, a=90);
-roundedEdge(x=301, y=1200, a=180);
-roundedEdge(y=1201, a=270);
+roundedEdge(l=50);
+roundedEdge(x=300, y=-1, a=90, l=50);
+roundedEdge(x=301, y=1200, a=180, l=50);
+roundedEdge(y=1201, a=270, l=50);
 }
 
 dH=80;  // gesamt
 
 scale([0.1, 0.1, 0.1])
 translate([0, 0, -1])
+union() {
 difference() {
 translate([400, 680, 0])
 cube([300, 520, dH], center=false);
 
-translate([609, 710, 64])
-cube([61, 61, 17], center=false);
 translate([430, 710, 11])
-cube([180, 61, dH+2], center=false);
+cube([240, 460, dH+2], center=false);
 
-translate([430, 770, 11])
-cube([240, 340, dH+2], center=false);
-
-translate([430, 1109, 64])
-cube([61, 61, 17], center=false);
-translate([490, 1109, 11])
-cube([180, 61, dH+2], center=false);
-
-roundedEdge(x=400, y=1201, a=270, h=dH);
-roundedEdge(x=701, y=1200, a=180, h=dH);
+roundedEdge(x=400, y=1201, a=270, h=dH+2, l=50);
+roundedEdge(x=701, y=1200, a=180, h=dH+2, l=50);
     
-translate([700, 1200, -2]) rotate([90, 0, 270]) roundedEdge(x=0, y=0, h=300);
-translate([399, 679, -2]) rotate([90, 270, 180]) roundedEdge(x=0, y=0, h=522);
-translate([700, 679, -2]) rotate([90, 0, 180]) roundedEdge(x=0, y=0, h=522);
+translate([700, 1200, -1]) rotate([90, 0, 270]) roundedEdge(x=0, y=0, h=300, l=50);
+translate([399, 679, -1]) rotate([90, 270, 180]) roundedEdge(x=0, y=0, h=522, l=50);
+translate([700, 679, -1]) rotate([90, 0, 180]) roundedEdge(x=0, y=0, h=522, l=50);
+}
+
+translate([490, 710, 11])
+cube([120, 10, dH+2+18], center=false);
+translate([490, 1160, 11])
+cube([120, 10, dH+2+18], center=false);
 }
