@@ -325,6 +325,19 @@ sub KVPUDP_SendHTTP ($$$) {
   return ($resp, $elapsedTime);
 }
 
+sub KVPUDP_GetPeer($$) {
+  my ($hash, $search) = @_;
+
+  foreach my $peer (sort keys %{ $hash->{PEERS} }) {
+	if ($peer eq $search or $hash->{PEERS}{$peer}{ChipID} eq $search) {
+		Log3 $hash, 4, "KVPUDP_GetPeer: $search eq $peer || " . $hash->{PEERS}{$peer}{ChipID};
+		return $peer;
+	}
+  }
+
+  return undef;
+}
+
 sub KVPUDP_GetPeerList($) {
   my ($hash) = @_;
 
@@ -370,6 +383,8 @@ sub KVPUDP_Set($@) {
       return "set $cmd requires as first argument a peer (IP)!" . KVPUDP_GetPeerList($hash);
     }
 
+	$peer = KVPUDP_GetPeer($hash, $peer);
+	
     if (!defined($hash->{PEERS}{$peer})) {
       return "set $cmd: argument peer is unknown!" . KVPUDP_GetPeerList($hash);
     }
