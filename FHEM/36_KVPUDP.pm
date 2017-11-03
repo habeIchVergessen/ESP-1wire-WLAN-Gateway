@@ -243,7 +243,7 @@ sub KVPUDP_Read($)
     $addvals{Mapping} = $hash->{PEERS}{$remote}{"Dictionary"};
   }
 
-  Log3 $hash, 3, "$name: Received " . length($data) . " bytes from '" . $remote . "''";
+  Log3 $hash, 3, "$name: Received " . length($data) . " bytes from '" . $remote . "'";
   Dispatch($hash, $data, \%addvals) if (!$serviceMsg && !defined($hash->{PEERS}{$remote}{Ignored}));  # dispatch result to KeyValueProtocol
 }
 
@@ -380,7 +380,7 @@ sub KVPUDP_Set($@) {
     }
 
     if (!defined($peer)) {
-      return "set $cmd requires as first argument a peer (IP)!" . KVPUDP_GetPeerList($hash);
+      return "set $cmd requires as first argument a peer (ChipID|IP)!" . KVPUDP_GetPeerList($hash);
     }
 
 	$peer = KVPUDP_GetPeer($hash, $peer);

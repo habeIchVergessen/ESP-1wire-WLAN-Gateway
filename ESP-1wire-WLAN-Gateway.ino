@@ -21,12 +21,12 @@ bool httpRequestProcessed     = false;
 
 //#define _DEBUG
 #define _DEBUG_SETUP
-#define _DEBUG_DETECTION
+//#define _DEBUG_DETECTION
 //#define _DEBUG_TIMING
 //#define _DEBUG_TIMING_UDP
 //#define _DEBUG_HEAP
 //#define _DEBUG_TEST_DATA
-//#define _DEBUG_DUMMY_DEVICES
+//#define _DEBUG_DEVICE_DS2408
 //#define _DEBUG_DEVICE_DS2438
 
 // EspWifi
@@ -35,7 +35,7 @@ bool httpRequestProcessed     = false;
 #define _MQTT_SUPPORT
 
 #define PROGNAME "Esp1wire"
-#define PROGVERS "0.2a"
+#define PROGVERS "0.2b"
 
 #include "EspConfig.h"
 #include "Esp1wire.h"
@@ -765,6 +765,12 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
 //      esp1wire.probeGPIO();
 //      listDevices();
 //      break;
+    case 't':
+      testDS2408(false);
+      break;
+    case 'T':
+      testDS2408(true);
+      break;
     case 'r':
       esp1wire.resetSearch();
     case 'l':
@@ -934,5 +940,25 @@ void print_warning(byte type, String msg) {
   if (type == 3)
     Serial.print(F("failed: "));
   Serial.println(msg);
+}
+
+void testDS2408(bool writeToDevice) {
+#ifdef _DEBUG_DEVICE_DS2408
+  Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
+  while (deviceFilter.hasNext()) {
+    Esp1wire::SwitchDevice *device = (Esp1wire::SwitchDevice*)deviceFilter.getNextDevice();
+
+    Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
+    device->getChannelInfo(&channelStatus);
+
+    if (writeToDevice) {
+      uint8_t data[3] = { 0xFF, 0x00, 0x01 };
+      device->setConditionalSearch(data);
+
+      device->getChannelInfo(&channelStatus);
+    } else
+      ;//device->resetAlarm(&channelStatus);
+  }
+#endif
 }
 

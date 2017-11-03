@@ -15,6 +15,9 @@
 #include "EspConfig.h"
 
 #include "DS2482.h"
+// fix malformed define
+#define DS2482_CONFIG_WS DS2484_CONFIG_WS
+
 class Esp1wire {
   private:
     uint8_t     mSDA, mSCL;
@@ -88,13 +91,33 @@ class Esp1wire {
     // class Busmaster
     class Busmaster {
       public:
-        Busmaster(DS2482 *ds2482, byte i2cPort, BusmasterType busmasterType);
+        enum DS2482Config : uint8_t {
+          DS2482ConfigAPU   = DS2482_CONFIG_APU
+//        , DS2482ConfigPPM   = DS2482_CONFIG_PPM
+        , DS2482ConfigSPU   = DS2482_CONFIG_SPU
+        , DS2482ConfigWS    = DS2482_CONFIG_WS
+        , DS2482ConfigNone  = 0
+        , DS2482ConfigAll   = DS2482_CONFIG_APU | DS2482_CONFIG_SPU | DS2482_CONFIG_WS
+        };
+
+        enum DS2482Channel : uint8_t {
+          DS2482Channel0 = 0x00
+        , DS2482Channel1 = 0x01
+        , DS2482Channel2 = 0x02
+        , DS2482Channel3 = 0x03
+        , DS2482Channel4 = 0x04
+        , DS2482Channel5 = 0x05
+        , DS2482Channel6 = 0x06
+        , DS2482Channel7 = 0x07
+        };
+        
+        Busmaster(DS2482 *ds2482, byte i2cPort);
         String          getName();
         BusmasterType   getType();
         bool            busAddressInUse(uint8_t busAddress) { return (mI2CPort == busAddress); };
 
         void            target_search(OneWireDeviceType oneWireDeviceType);
-        bool            selectChannel(uint8_t channel);
+        bool            selectChannel(DS2482Channel channel);
         bool            wireReset();
         void            wireSelect(uint8_t *address);
         void            wireWriteByte(uint8_t b);
@@ -105,7 +128,47 @@ class Esp1wire {
         bool            wireSearch(uint8_t *address, bool alarm=false);
         void            wireStrongPullup(bool pullup);
 
+        String          dumpConfigAndStatus();
+        
+      protected:
+        uint8_t         deviceReset();
+        uint8_t         readStatus();
+        uint8_t         readConfig();
+        uint8_t         writeConfig(uint8_t configuration);
+        uint8_t         readChannel();
+
       private:
+        enum DS2482Register : uint8_t {
+          DS2482RegisterConfig            = 0xC3
+        , DS2482RegisterChannelSelection  = 0xD2  // 800 only
+        , DS2482RegisterDataRead          = 0xE1
+        , DS2482RegisterStatus            = 0xF0
+        };         
+
+        enum DS2482Status : uint8_t {
+          DS2482Status1WireBusy             = 0x01
+        , DS2482StatusPresencePulseDetected = 0x02
+        , DS2482StatusShortDetected         = 0x04
+        , DS2482StatusLogicalLevel          = 0x08
+        , DS2482StatusDeviceReset           = 0x10
+        , DS2482StatusSingleBitResult       = 0x20
+        , DS2482StatusTripletSecondBit      = 0x40
+        , DS2482StatusBranchDirectionTaken  = 0x80
+        };         
+
+        enum DS2482Command : uint8_t {
+          DS2482CommandWireTriplet    = 0x78
+        , DS2482CommandWireSingleBit  = 0x87
+        , DS2482CommandWireReadByte   = 0x96
+        , DS2482CommandWireWriteByte  = 0xA5
+        , DS2482CommandWireReset      = 0xB4
+        , DS2482CommandChannelSelect  = 0xC3  // 800 only
+        , DS2482CommandWriteConfig    = 0xD2
+        , DS2482CommandSetReadPointer = 0xE1
+        , DS2482CommandDeviceReset    = 0xF0
+        };         
+
+        bool            setReadPointer(DS2482Register readPointer);
         DS2482          *mDS2482;
         BusmasterType   mBusmasterType;
         byte            mI2CPort;
@@ -171,12 +234,12 @@ class Esp1wire {
     class BusIC : public Bus
     {
       private:
-        Busmaster       *mBusmaster;
-        uint8_t         mChannel = 0;
+        Busmaster                 *mBusmaster;
+        Busmaster::DS2482Channel  mChannel = Busmaster::DS2482Channel0;
 
       public:
         BusIC(Busmaster *busmaster);
-        BusIC(Busmaster *busmaster, uint8_t channel);
+        BusIC(Busmaster *busmaster, Busmaster::DS2482Channel channel);
 
         DeviceList *getFirstDevice() override;
         String getBusInformation() override;
@@ -660,7 +723,7 @@ class Esp1wire {
     BusList         *firstBus = NULL, *lastBus = NULL;
     uint8_t         mBusListCount = 0;
 
-    bool            addBusmaster(DS2482 *ds2482, byte i2cPort, BusmasterType busmasterType);
+    bool            addBusmaster(DS2482 *ds2482, byte i2cPort);
     bool            addGPIO(OneWire *oneWire, byte gpioPort);
     bool            addBus(Bus *bus);
     void            freeAlarmFilter();
