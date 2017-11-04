@@ -1,3 +1,6 @@
 [submodule "libraries/OneWire"]
 	path = libraries/OneWire
 	url = https://github.com/PaulStoffregen/OneWire.git
+[submodule "libraries/DS2482"]
+	path = libraries/DS2482
+	url = https://github.com/habeIchVergessen/DS18B20_DS2482.git
