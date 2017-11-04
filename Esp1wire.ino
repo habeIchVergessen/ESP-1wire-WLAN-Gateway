@@ -51,7 +51,7 @@ bool Esp1wire::probeI2C(uint8_t sda, uint8_t scl) {
       DS2482 *ds2482 = new DS2482(addr);
 
       if (ds2482->reset())
-        addBusmaster(ds2482, addr, (ds2482->selectChannel(0) ? DS2482_800 : DS2482_100));
+        addBusmaster(ds2482, addr);
       else
         free(ds2482);
     }
@@ -85,16 +85,16 @@ bool Esp1wire::probeGPIO(uint8_t gpio) {
   return (busCount < getBusCount());
 }
 
-bool Esp1wire::addBusmaster(DS2482 *ds2482, byte i2cPort, BusmasterType busmasterType) {
-  Busmaster *busmaster = new Busmaster(ds2482, i2cPort, busmasterType);
+bool Esp1wire::addBusmaster(DS2482 *ds2482, byte i2cPort) {
+  Busmaster *busmaster = new Busmaster(ds2482, i2cPort);
 
 #ifdef _DEBUG_SETUP
-  Serial.print("found " +  busmaster->getName() + " @ 0x"); Serial.println(i2cPort, HEX);
+  Serial.print("found " + busmaster->getName() + " @ 0x" + String(i2cPort, HEX) + busmaster->dumpConfigAndStatus());
 #endif
-  if (busmasterType == DS2482_800) {
+  if (busmaster->getType() == DS2482_800) {
     for (uint8_t ch = 7; ch >= 0; ch--) {
-      if (busmaster->selectChannel(ch))
-        addBus(new BusIC(busmaster, ch));
+      if (busmaster->selectChannel((Busmaster::DS2482Channel)ch))
+        addBus(new BusIC(busmaster, (Busmaster::DS2482Channel)ch));
     }
   } else
     addBus(new BusIC(busmaster));
@@ -230,17 +230,33 @@ bool Esp1wire::busAddressInUse(uint8_t busAddress) {
 }
 
 // class Esp1wire Busmaster
-Esp1wire::Busmaster::Busmaster(DS2482 *ds2482, byte i2cPort, BusmasterType busmasterType) {
+Esp1wire::Busmaster::Busmaster(DS2482 *ds2482, byte i2cPort) {
   mDS2482         = ds2482;
   mI2CPort        = i2cPort;
-  mBusmasterType  = busmasterType;
+  mBusmasterType  = (setReadPointer(DS2482RegisterChannelSelection) ? DS2482_800 : DS2482_100);
 }
 
-bool Esp1wire::Busmaster::selectChannel(uint8_t channel) {
-  bool result;
+bool Esp1wire::Busmaster::selectChannel(DS2482Channel channel) {
+  bool result = false;
 
-  if ((result = mDS2482->selectChannel(channel)))
-    mSelectedChannel = channel;
+  if (mBusmasterType != DS2482_800)
+    return result;
+    
+  uint8_t ch = (channel & 0x07);
+
+  busyWait(true);
+  Wire.beginTransmission(mI2CPort);
+  Wire.write(DS2482CommandChannelSelect);
+  Wire.write(ch | (~ch)<<4);
+  if (Wire.endTransmission() != 0)
+    return false;
+
+  busyWait();
+  Wire.requestFrom(mI2CPort, (uint8_t)1);
+  uint8_t rb = Wire.read();
+
+  if (result = (rb == ((ch & 0x80) + ((ch & 0x70) >> 1) + (ch & 0x70))))
+    mSelectedChannel = ch;
 
   return result;
 }
@@ -320,7 +336,7 @@ bool Esp1wire::Busmaster::wireSearch(uint8_t *address, bool alarm) {
 
     busyWait();
     Wire.beginTransmission(mI2CPort);
-    Wire.write(0x78);
+    Wire.write(DS2482CommandWireTriplet);
     Wire.write(direction ? 0x80 : 0);
     Wire.endTransmission();
     uint8_t status = busyWait();
@@ -362,9 +378,95 @@ Esp1wire::BusmasterType Esp1wire::Busmaster::getType() {
 
 void Esp1wire::Busmaster::wireStrongPullup(bool pullup) {
   if (pullup)
-    mDS2482->configure(DS2482_CONFIG_SPU | DS2482_CONFIG_APU);
+    writeConfig(DS2482_CONFIG_SPU);
 }
 
+String Esp1wire::Busmaster::dumpConfigAndStatus() {
+  char buf[36];
+  
+  uint8_t bmc = readConfig();
+  sprintf(buf, " (apu %d spu %d ws %d) status 0x%x\n"
+  , (bmc & DS2482ConfigAPU ? 1 : 0)
+  , (bmc & DS2482ConfigSPU ? 1 : 0)
+  , (bmc & DS2482ConfigWS ? 1 : 0)
+  , readStatus()
+  );
+
+  return String(buf);
+}
+
+uint8_t Esp1wire::Busmaster::deviceReset() {
+    busyWait(true);
+    Wire.beginTransmission(mI2CPort);
+    Wire.write(DS2482CommandDeviceReset);
+    Wire.endTransmission();
+    busyWait();
+
+    Wire.requestFrom(mI2CPort, (uint8_t)1);
+    uint8_t result = Wire.read();
+
+    return (result & (~DS2482StatusLogicalLevel & 0xFF)) == DS2482StatusDeviceReset;
+}
+
+uint8_t Esp1wire::Busmaster::readStatus() {
+    uint8_t result = 0;
+
+    busyWait(true);
+    if (setReadPointer(DS2482RegisterStatus)) {
+      Wire.requestFrom(mI2CPort, (uint8_t)1);
+      result = Wire.read();
+    }
+    
+    return result;
+}
+
+uint8_t Esp1wire::Busmaster::readConfig() {
+    busyWait(true);
+    
+    uint8_t result = 0;
+    if (setReadPointer(DS2482RegisterConfig)) {
+      Wire.requestFrom(mI2CPort, (uint8_t)1);
+      result = Wire.read();
+    }
+    
+    return result;
+}
+
+uint8_t Esp1wire::Busmaster::writeConfig(uint8_t configuration) {
+    uint8_t config = (configuration & DS2482ConfigAll);
+    
+    busyWait(true);
+    Wire.beginTransmission(mI2CPort);
+    Wire.write(DS2482CommandWriteConfig);    
+    Wire.write(config | (~config)<<4);   
+    Wire.endTransmission();
+    busyWait();
+
+    Wire.requestFrom(mI2CPort, (uint8_t)1);
+    uint8_t result = Wire.read();
+
+    return (result == config);
+}
+
+uint8_t Esp1wire::Busmaster::readChannel() {
+    uint8_t result = 0;
+
+    busyWait(true);
+    if (setReadPointer(DS2482RegisterChannelSelection)) {
+      Wire.requestFrom(mI2CPort, (uint8_t)1);
+      result = Wire.read();
+    }
+
+    return result;
+}
+
+bool Esp1wire::Busmaster::setReadPointer(DS2482Register readPointer) {
+    Wire.beginTransmission(mI2CPort);
+    Wire.write(DS2482CommandSetReadPointer);
+    Wire.write(readPointer);
+
+    return (Wire.endTransmission() == 0);
+}
 // class Esp1wire Bus
 void Esp1wire::Bus::registerTemperatureDevice(bool parasite, uint8_t resolution) {
   mTemperatureDeviceCount++;
@@ -530,21 +632,9 @@ void Esp1wire::Bus::wireWriteBytes(uint8_t *bytes, uint8_t len) {
 // class Esp1wire BusIC
 Esp1wire::BusIC::BusIC(Busmaster *busmaster) {
   mBusmaster = busmaster;
-
-#ifdef _DEBUG_DUMMY_DEVICES
-//  // dummy battery
-//  uint8_t batt[8] = { 0x26, 0xe4, 0x21, 0x71, 0x01, 0x00, 0x00, 0x2d };
-//  deviceDetected(batt);
-//  // dummy counter
-//  uint8_t cnt[8] = { 0x1d, 0xa2, 0x00, 0x00, 0x00, 0x00, 0x01, 0xaf };
-//  deviceDetected(cnt);
-  // dummy DS2408
-  uint8_t sw8[8] = { 0x29, 0xa3, 0x00, 0x00, 0x00, 0x00, 0x01, 0x78 };
-  deviceDetected(sw8);
-#endif
 }
 
-Esp1wire::BusIC::BusIC(Busmaster *busmaster, uint8_t channel) {
+Esp1wire::BusIC::BusIC(Busmaster *busmaster, Busmaster::DS2482Channel channel) {
   mBusmaster = busmaster;
   mChannel = channel;
 }
@@ -575,9 +665,11 @@ bool Esp1wire::BusIC::alarmSearch(DeviceType targetSearch) {
   switch (targetSearch) {
     case DeviceTypeSwitch:
       mBusmaster->target_search(DS2406);
-      alarmSearchIntern(targetSearch);
+      alarmSearchIntern(targetSearch, DS2406);
       wireResetSearch();
       mBusmaster->target_search(DS2408);
+      alarmSearchIntern(targetSearch, DS2408);
+      break;
     default:
       alarmSearchIntern(targetSearch);
       break;
@@ -586,15 +678,15 @@ bool Esp1wire::BusIC::alarmSearch(DeviceType targetSearch) {
   return true;
 }
 
-bool Esp1wire::BusIC::alarmSearchIntern(DeviceType targetSearch) {
+bool Esp1wire::BusIC::alarmSearchIntern(DeviceType targetSearch, OneWireDeviceType familyCode) {
   uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
   while (mBusmaster->wireSearch(address, true)) {
     // found device that doesn't match family code
-    if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
+    if (targetSearch != DeviceTypeAll && (getDeviceType(address) != targetSearch || (familyCode != 0x00 && address[0] != familyCode)))
       break;
 
-    // prevent infinite loop (forced by an fixed bug in Busmaster::wireSearch)
+    // prevent infinite loop
     if (HelperDevice::compareAddress(address, last) == 0)
       break;
     memcpy(last, address, sizeof(address));
@@ -606,9 +698,6 @@ bool Esp1wire::BusIC::alarmSearchIntern(DeviceType targetSearch) {
 }
 
 bool Esp1wire::BusIC::selectChannel() {
-  if (mBusmaster->getType() != DS2482_800)
-    return false;
-
   return mBusmaster->selectChannel(mChannel);
 }
 
@@ -685,9 +774,11 @@ bool Esp1wire::BusGPIO::alarmSearch(DeviceType targetSearch) {
   switch (targetSearch) {
     case DeviceTypeSwitch:
       mOneWire->target_search(DS2406);
-      alarmSearchIntern(targetSearch);
+      alarmSearchIntern(targetSearch, DS2406);
       wireResetSearch();
       mOneWire->target_search(DS2408);
+      alarmSearchIntern(targetSearch, DS2408);
+      break;
     default:
       alarmSearchIntern(targetSearch);
       break;
@@ -696,12 +787,12 @@ bool Esp1wire::BusGPIO::alarmSearch(DeviceType targetSearch) {
   return true;
 }
 
-bool Esp1wire::BusGPIO::alarmSearchIntern(DeviceType targetSearch) {
+bool Esp1wire::BusGPIO::alarmSearchIntern(DeviceType targetSearch, OneWireDeviceType familyCode) {
   uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
   while (mOneWire->search(address, false)) {
     // found device that doesn't match family code
-    if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
+    if (targetSearch != DeviceTypeAll && (getDeviceType(address) != targetSearch || (familyCode != 0x00 && address[0] != familyCode)))
       break;
 
     // prevent infinite loop
@@ -1487,6 +1578,7 @@ bool Esp1wire::HelperSwitchDevice::channelAccessInfoDS2408(Bus *bus, uint8_t *ad
 
   result = result && ((crc16 & 0xFF) == crc[0]) && ((crc16 >> 8) == crc[1]);
 
+#ifdef _DEBUG_DEVICE_DS2408
   Serial.println("HelperSwitchDevice::channelAccessInfoDS2408: 0x" +
     String(data[0], HEX) + " " +
     String(data[1], HEX) + " " +
@@ -1495,15 +1587,18 @@ bool Esp1wire::HelperSwitchDevice::channelAccessInfoDS2408(Bus *bus, uint8_t *ad
     String(data[4], HEX) + " " +
     String(data[5], HEX) + " " +
     String(data[6], HEX) + " " +
-    String(data[7], HEX)
+    String(data[7], HEX) + ", result " +
+    String(result ? 1 : 0)
   );
+#endif  
+
   if (result) {
     channelStatus->noChannels = 8;
   }
 
   if (resetAlarm)
     resetActivityLatchesDS2408(bus, address);
-  
+
   return result;
 }
 
@@ -1571,7 +1666,10 @@ bool Esp1wire::HelperSwitchDevice::resetActivityLatchesDS2408(Bus *bus, uint8_t 
   bool result = bus->reset();
 
   result = result && (data[0] == 0xAA);
-  
+
+#ifdef _DEBUG_DEVICE_DS2408
+  Serial.println("resetActivityLatchesDS2408: " + String(result ? 1 : 0));
+#endif
   return result;
 }
 
