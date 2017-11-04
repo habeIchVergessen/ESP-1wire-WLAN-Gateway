@@ -1,4 +1,4 @@
-**OneWire library for ESP8266**
+**prepare environment**
 
 windows
 - copy folders to %USERPROFILE%\Documents\Arduino\libraries
