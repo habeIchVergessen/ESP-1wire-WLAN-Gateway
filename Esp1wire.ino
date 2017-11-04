@@ -665,9 +665,11 @@ bool Esp1wire::BusIC::alarmSearch(DeviceType targetSearch) {
   switch (targetSearch) {
     case DeviceTypeSwitch:
       mBusmaster->target_search(DS2406);
-      alarmSearchIntern(targetSearch);
+      alarmSearchIntern(targetSearch, DS2406);
       wireResetSearch();
       mBusmaster->target_search(DS2408);
+      alarmSearchIntern(targetSearch, DS2408);
+      break;
     default:
       alarmSearchIntern(targetSearch);
       break;
@@ -676,15 +678,15 @@ bool Esp1wire::BusIC::alarmSearch(DeviceType targetSearch) {
   return true;
 }
 
-bool Esp1wire::BusIC::alarmSearchIntern(DeviceType targetSearch) {
+bool Esp1wire::BusIC::alarmSearchIntern(DeviceType targetSearch, OneWireDeviceType familyCode) {
   uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
   while (mBusmaster->wireSearch(address, true)) {
     // found device that doesn't match family code
-    if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
+    if (targetSearch != DeviceTypeAll && (getDeviceType(address) != targetSearch || (familyCode != 0x00 && address[0] != familyCode)))
       break;
 
-    // prevent infinite loop (forced by an fixed bug in Busmaster::wireSearch)
+    // prevent infinite loop
     if (HelperDevice::compareAddress(address, last) == 0)
       break;
     memcpy(last, address, sizeof(address));
@@ -772,9 +774,11 @@ bool Esp1wire::BusGPIO::alarmSearch(DeviceType targetSearch) {
   switch (targetSearch) {
     case DeviceTypeSwitch:
       mOneWire->target_search(DS2406);
-      alarmSearchIntern(targetSearch);
+      alarmSearchIntern(targetSearch, DS2406);
       wireResetSearch();
       mOneWire->target_search(DS2408);
+      alarmSearchIntern(targetSearch, DS2408);
+      break;
     default:
       alarmSearchIntern(targetSearch);
       break;
@@ -783,12 +787,12 @@ bool Esp1wire::BusGPIO::alarmSearch(DeviceType targetSearch) {
   return true;
 }
 
-bool Esp1wire::BusGPIO::alarmSearchIntern(DeviceType targetSearch) {
+bool Esp1wire::BusGPIO::alarmSearchIntern(DeviceType targetSearch, OneWireDeviceType familyCode) {
   uint8_t address[8], last[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
   while (mOneWire->search(address, false)) {
     // found device that doesn't match family code
-    if (targetSearch != DeviceTypeAll && getDeviceType(address) != targetSearch)
+    if (targetSearch != DeviceTypeAll && (getDeviceType(address) != targetSearch || (familyCode != 0x00 && address[0] != familyCode)))
       break;
 
     // prevent infinite loop

@@ -210,7 +210,7 @@ class Esp1wire {
         virtual bool    reset();
         virtual bool    resetSearch();
         virtual bool    alarmSearch(DeviceType targetSearch=DeviceTypeAll);
-        virtual bool    alarmSearchIntern(DeviceType targetSearch);
+        virtual bool    alarmSearchIntern(DeviceType targetSearch, OneWireDeviceType familyCode = (OneWireDeviceType)0x00);
         virtual void    wireResetSearch();
         virtual void    wireSelect(uint8_t *address);
         virtual void    wireWriteByte(uint8_t b);
@@ -249,7 +249,7 @@ class Esp1wire {
         bool reset() override;
         bool resetSearch() override;
         bool alarmSearch(DeviceType targetSearch) override;
-        bool alarmSearchIntern(DeviceType targetSearch) override;
+        bool alarmSearchIntern(DeviceType targetSearch, OneWireDeviceType familyCode = (OneWireDeviceType)0x00) override;
         bool selectChannel();
         void wireResetSearch() override;
         void wireSelect(uint8_t *address) override;
@@ -277,7 +277,7 @@ class Esp1wire {
         bool resetSearch() override;
         void wireResetSearch() override;
         bool alarmSearch(DeviceType targetSearch) override;
-        bool alarmSearchIntern(DeviceType targetSearch) override;
+        bool alarmSearchIntern(DeviceType targetSearch, OneWireDeviceType familyCode = (OneWireDeviceType)0x00) override;
         void wireSelect(uint8_t *address) override;
         void wireWriteByte(uint8_t b) override;
         uint8_t wireReadBit() override;
