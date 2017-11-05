@@ -36,6 +36,7 @@ bool httpRequestProcessed     = false;
 
 #define PROGNAME "Esp1wire"
 #define PROGVERS "0.2b"
+#define PROGBUILD String(__DATE__) + " " + String(__TIME__)
 
 #include "EspConfig.h"
 #include "Esp1wire.h"
@@ -900,6 +901,7 @@ void handleCommandV() {
   #endif
   Serial.print(F(") "));
 #endif
+  Serial.print("compiled at " + PROGBUILD + " ");
 }
 
 void bmpDataCallback(float temperature, int pressure) {
