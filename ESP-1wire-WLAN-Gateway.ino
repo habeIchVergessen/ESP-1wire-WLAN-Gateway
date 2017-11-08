@@ -717,36 +717,7 @@ String handleScheduleList() {
 }
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
-  Esp1wire::DeviceFilter df = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
-  Esp1wire::Device *device;
-  
   switch (r) {
-#ifdef _DEBUG_TEST_DATA
-    case 'c': // test data
-    case 't': // test data
-    case 'w': // test data
-      df = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
-      while (df.hasNext()) {
-        device = df.getNextDevice();
-        if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
-          if (r=='w') {
-            uint8_t data[1] = { 0x00 };
-            bool result = ((Esp1wire::SwitchDevice*)device)->readChannelAccess(data);
-            Serial.println("readChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
-            data[0] = ~data[0];
-            result = ((Esp1wire::SwitchDevice*)device)->writeChannelAccess(data);
-            Serial.println("writeChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
-          }
-          if (r=='c') {
-            uint8_t condSearch[3] = { 0x12, 0x34, 0x01 };
-            ((Esp1wire::SwitchDevice*)device)->setConditionalSearch(condSearch);
-          }
-          Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
-          ((Esp1wire::SwitchDevice*)device)->resetAlarm(&channelStatus);
-        }
-      }
-      break;
-#endif
 #ifdef _ESP_ME_SUPPORT
     case 'm': // Aussen klingeln Anfang
       Serial.print(F("send: monitor ein "));
@@ -766,12 +737,12 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
 //      esp1wire.probeGPIO();
 //      listDevices();
 //      break;
+#ifdef _DEBUG_DEVICE_DS2408
     case 't':
-      testDS2408(false);
-      break;
     case 'T':
-      testDS2408(true);
+      testDS2408((r == 'T'));
       break;
+#endif
     case 'r':
       esp1wire.resetSearch();
     case 'l':
@@ -946,20 +917,32 @@ void print_warning(byte type, String msg) {
 
 void testDS2408(bool writeToDevice) {
 #ifdef _DEBUG_DEVICE_DS2408
-  Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
-  while (deviceFilter.hasNext()) {
-    Esp1wire::SwitchDevice *device = (Esp1wire::SwitchDevice*)deviceFilter.getNextDevice();
+  Esp1wire::DeviceFilter df = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
+  Esp1wire::Device *device;
+  
+  while (df.hasNext()) {
+    device = df.getNextDevice();
+    if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
+      Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
+      device->getChannelInfo(&channelStatus);
 
-    Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
-    device->getChannelInfo(&channelStatus);
-
-    if (writeToDevice) {
       uint8_t data[3] = { 0xFF, 0x00, 0x01 };
       device->setConditionalSearch(data);
 
-      device->getChannelInfo(&channelStatus);
-    } else
-      ;//device->resetAlarm(&channelStatus);
+      if (writeToDevice) {
+        uint8_t condSearch[3] = { 0x12, 0x34, 0x01 };
+        ((Esp1wire::SwitchDevice*)device)->setConditionalSearch(condSearch);
+  
+//        uint8_t data[1] = { 0x00 };
+//        bool result = ((Esp1wire::SwitchDevice*)device)->readChannelAccess(data);
+//        Serial.println("readChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
+//        data[0] = ~data[0];
+//        result = ((Esp1wire::SwitchDevice*)device)->writeChannelAccess(data);
+//        Serial.println("writeChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
+      } else {
+        ((Esp1wire::SwitchDevice*)device)->resetAlarm(&channelStatus);
+      }
+    }
   }
 #endif
 }
