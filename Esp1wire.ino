@@ -873,13 +873,38 @@ Esp1wire::Device::Device(Bus *bus, uint8_t *address, DeviceType deviceType) {
 #endif
     ((SwitchDevice*)this)->readConfig();
     SwitchDevice::SwitchMemoryStatus memoryStatus;
-    if (HelperSwitchDevice::readStatus(mBus, mAddress, &memoryStatus) && memoryStatus.parasite) {
+    SwitchDevice::SwitchChannelStatus channelStatus;
+    if (HelperSwitchDevice::readStatus(mBus, mAddress, &memoryStatus)) {
+      if (memoryStatus.parasite) {
         mStatus |= statusParasiteOn;
 #ifdef _DEBUG
     Serial.print("parasite ");
 #endif
+      }
+      // DS2408 power on reset (PORL)
+      if (getOneWireDeviceType() == DS2408 && memoryStatus.powerOnResetLatch) {
+//        uint8_t condSearch[3] = { 0xFF, 0xFF, 0x00 };
+//        bool cs = HelperSwitchDevice::setConditionalSearch(mBus, mAddress, condSearch);
+        bool cs = ((SwitchDevice*)this)->setConditionalSearch(SwitchDevice::SourceSelectPIOStatus08, SwitchDevice::ConditionOR, 0xFF, 0xFF);  // all channels at polarity high
+        uint8_t data[1] = { 0xFF };
+        cs = cs && HelperSwitchDevice::writeChannelAccess(mBus, mAddress, data);
+        // reset activity latches
+        cs = cs && HelperSwitchDevice::channelAccessInfo(mBus, mAddress, &channelStatus, true);
+        // disable test
+        bool disableTest = false;
+        if (bus->reset()) {
+          bus->wireWriteByte(0x96);
+          for (int i=0;i<8;i++)
+            bus->wireWriteByte(address[i]);
+          bus->wireWriteByte(0x3C);
+          disableTest = bus->reset();
+        }
+#ifdef _DEBUG_DEVICE_DS2408
+        Serial.println("PORL " + String(cs ? "ok" : "failed") + " disable test " + String(disableTest ? "ok" : "failed"));
+#endif
+      }
     }
-    SwitchDevice::SwitchChannelStatus channelStatus;
+
     if (HelperSwitchDevice::channelAccessInfo(mBus, mAddress, &channelStatus)) {
 #ifdef _DEBUG
     Serial.print("ch " + String(channelStatus.noChannels) + " ");
@@ -1164,7 +1189,27 @@ bool Esp1wire::SwitchDevice::setConditionalSearch(ConditionalSearchPolarity csPo
   
   switch(getOneWireDeviceType()) {
     case DS2406:
-      result = HelperSwitchDevice::writeStatus(mBus, mAddress, data);
+      result = setConditionalSearch(data);
+      break;
+    default:
+      Serial.println("SwitchDevice::setConditionalSearch: " + getOneWireDeviceID() + " unsupported");
+      break;
+  }
+
+  return result;
+}
+
+bool Esp1wire::SwitchDevice::setConditionalSearch(ConditionalSearchSourceSelect08 csSourceSelect08, ConditionalSearchCondition08 csCondition08, uint8_t csChannelSelectionMask, uint8_t csChannelPolarityMask) {
+  if (mDeviceType != DeviceTypeSwitch)
+    return false;
+
+  bool result = false;
+
+  uint8_t data[3] =  { csChannelSelectionMask, csChannelPolarityMask & csChannelSelectionMask, csSourceSelect08 | csCondition08 };
+  
+  switch(getOneWireDeviceType()) {
+    case DS2408:
+      result = setConditionalSearch(data);
       break;
     default:
       Serial.println("SwitchDevice::setConditionalSearch: " + getOneWireDeviceID() + " unsupported");
@@ -1178,11 +1223,13 @@ bool Esp1wire::SwitchDevice::resetAlarm(SwitchChannelStatus *channelStatus) {
   if (mDeviceType != DeviceTypeSwitch)
     return false;
 
-  if (!getChannelInfo(channelStatus))
+  // DS2406: it's required to read status separately before reset 
+  if (getOneWireDeviceType() == DS2406 && !getChannelInfo(channelStatus))
     return false;
 
   SwitchChannelStatus resetStatus;
-  return channelAccessInfo(&resetStatus, true);
+  SwitchChannelStatus *paramChannelStatus = (getOneWireDeviceType() == DS2406 ? &resetStatus : channelStatus);
+  return channelAccessInfo(paramChannelStatus, true);
 }
 
 // DS2408
@@ -1207,6 +1254,15 @@ void Esp1wire::SwitchDevice::readConfig() {
 
     if ((conSearch[0] & SourceSelectPIOStatus) != 0)
       HelperSwitchDevice::writeStatus(mBus, mAddress, conSearch);
+  }
+  if (value != "" && getOneWireDeviceType() == DS2408 && (value.toInt() & 0x03) != 0) {
+    uint8_t conSearch[3] = { 0, 0, (value.toInt() & 0x03) };
+    if ((value = devConf.getValue(F("channelSelect"))) != "")
+      conSearch[0] = value.toInt() & 0xFF;
+    if ((value = devConf.getValue(F("channelPolarity"))) != "")
+      conSearch[1] = value.toInt() & 0xFF;
+
+    HelperSwitchDevice::writeStatus(mBus, mAddress, conSearch);
   }
 }
 
@@ -1396,6 +1452,9 @@ bool Esp1wire::HelperSwitchDevice::readStatus(Bus *bus, uint8_t *address, Switch
     case DS2406:
       return HelperSwitchDevice::readStatusDS2406(bus, address, memoryStatus);
       break;
+    case DS2408:
+      return HelperSwitchDevice::readStatusDS2408(bus, address, memoryStatus);
+      break;
     default:
       Serial.println("HelperSwitchDevice::readStatus: 0x" + String(address[0], HEX) + " unsupported");
       break;
@@ -1426,11 +1485,57 @@ bool Esp1wire::HelperSwitchDevice::readStatusDS2406(Bus *bus, uint8_t *address, 
   result = result && ((crc16 & 0xFF) == data[smfCRC0]) && ((crc16 >> 8) == data[smfCRC1]);
 
   if (result) {
-    memoryStatus->csPolarity      = (ConditionalSearchPolarity)(data[smfStatus] & smbfPolarity);
-    memoryStatus->csSourceSelect  = (ConditionalSearchSourceSelect)(data[smfStatus] & (smbfSrcSelA | smbfSrcSelB));
-    memoryStatus->csChannelSelect = (ConditionalSearchChannelSelect)(data[smfStatus] & (smbfChSelPioA | smbfChSelPioB));
-    memoryStatus->channelFlipFlop = (ChannelFlipFlop)(data[smfStatus] & (smbfPioA | smbfPioB));
-    memoryStatus->parasite        = (data[smfStatus] & smbfPowerSupply) == 0;
+    memoryStatus->csPolarity      = (ConditionalSearchPolarity)(data[smfStatus06] & smbf06Polarity);
+    memoryStatus->csSourceSelect  = (ConditionalSearchSourceSelect)(data[smfStatus06] & (smbf06SrcSelA | smbf06SrcSelB));
+    memoryStatus->csChannelSelect = (ConditionalSearchChannelSelect)(data[smfStatus06] & (smbf06ChSelPioA | smbf06ChSelPioB));
+    memoryStatus->channelFlipFlop = (ChannelFlipFlop)(data[smfStatus06] & (smbf06PioA | smbf06PioB));
+    memoryStatus->parasite        = (data[smfStatus06] & smbf06PowerSupply) == 0;
+  }
+  
+  return result;
+}
+
+bool Esp1wire::HelperSwitchDevice::readStatusDS2408(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus) {
+  uint8_t cmd[3] = {
+    owscReadPioRegisters    // command
+    , 0x88, 0x00            // address TA1 & TA2
+  }, data[10];
+
+  if (!bus->reset())
+    return false;
+
+  bus->wireSelect(address);
+  bus->wireWriteBytes(cmd, sizeof(cmd));
+  bus->wireReadBytes(data, 10);
+  bool result = bus->reset();
+
+  // write send commands to crc
+  uint16_t crc16 = bus->crc16(cmd, sizeof(cmd));
+  // apply received data to crc
+  crc16 = ~bus->crc16(data, 8, crc16);
+
+  result = result && ((crc16 & 0xFF) == data[smfCRC0]) && ((crc16 >> 8) == data[smfCRC1]);
+
+#ifdef _DEBUG_DEVICE_DS2408
+  Serial.println("HelperSwitchDevice::readStatusDS2408: 0x" + 
+    String(data[0], HEX) + " " +
+    String(data[1], HEX) + " " +
+    String(data[2], HEX) + " " +
+    String(data[3], HEX) + " " +
+    String(data[4], HEX) + " " +
+    String(data[5], HEX) + " " +
+    String(data[6], HEX) + " " +
+    String(data[7], HEX) + ", result " +
+    String(result ? "ok" : "failed")
+  );
+#endif
+
+  if (result) {
+    //memoryStatus->csPolarity      = (ConditionalSearchPolarity)(data[smfStatus08] & smbfPolarity);
+    //memoryStatus->csSourceSelect  = (ConditionalSearchSourceSelect)(data[smfStatus08] & (smbfSrcSelA | smbfSrcSelB));
+    //memoryStatus->csChannelSelect = (ConditionalSearchChannelSelect)(data[smfStatus08] & (smbfChSelPioA | smbfChSelPioB));
+    memoryStatus->parasite          = (data[smfStatus08] & smbf08PowerSupply) == 0;
+    memoryStatus->powerOnResetLatch = (data[smfStatus08] & smbf08PORL) == smbf08PORL;
   }
   
   return result;
@@ -1503,7 +1608,7 @@ bool Esp1wire::HelperSwitchDevice::channelAccessInfo(Bus *bus, uint8_t *address,
     case DS2406:
       return HelperSwitchDevice::channelAccessInfoDS2406(bus, address, channelStatus, resetAlarm);
       break;
-    default:
+    case DS2408:
       return HelperSwitchDevice::channelAccessInfoDS2408(bus, address, channelStatus, resetAlarm);
       break;
   }
@@ -1593,7 +1698,33 @@ bool Esp1wire::HelperSwitchDevice::channelAccessInfoDS2408(Bus *bus, uint8_t *ad
 #endif  
 
   if (result) {
+    channelStatus->parasite   = (data[smfStatus08] & smbf08PowerSupply) == 0;
     channelStatus->noChannels = 8;
+    channelStatus->latchA     = (data[smfLatchActReg08] & 0x01) == 0x01;
+    channelStatus->senseA     = (data[smfLogicalState08] & 0x01 ? 1 : 0);
+    channelStatus->flipFlopQA = 0;
+  
+    channelStatus->latchB     = (data[smfLatchActReg08] & 0x02) == 0x02;
+    channelStatus->senseB     = (data[smfLogicalState08] & 0x02 ? 1 : 0);
+    channelStatus->flipFlopQB = 0;
+
+    channelStatus->latchC     = (data[smfLatchActReg08] & 0x04) == 0x04;
+    channelStatus->senseC     = (data[smfLogicalState08] & 0x04 ? 1 : 0);
+
+    channelStatus->latchD     = (data[smfLatchActReg08] & 0x08) == 0x08;
+    channelStatus->senseD     = (data[smfLogicalState08] & 0x08 ? 1 : 0);
+
+    channelStatus->latchE     = (data[smfLatchActReg08] & 0x10) == 0x10;
+    channelStatus->senseE     = (data[smfLogicalState08] & 0x10 ? 1 : 0);
+
+    channelStatus->latchF     = (data[smfLatchActReg08] & 0x20) == 0x20;
+    channelStatus->senseF     = (data[smfLogicalState08] & 0x20 ? 1 : 0);
+
+    channelStatus->latchG     = (data[smfLatchActReg08] & 0x40) == 0x40;
+    channelStatus->senseG     = (data[smfLogicalState08] & 0x40 ? 1 : 0);
+
+    channelStatus->latchH     = (data[smfLatchActReg08] & 0x80) == 0x80;
+    channelStatus->senseH     = (data[smfLogicalState08] & 0x80 ? 1 : 0);
   }
 
   if (resetAlarm)
@@ -1647,6 +1778,9 @@ bool Esp1wire::HelperSwitchDevice::writeChannelAccessDS2408(Bus *bus, uint8_t *a
   bool result = bus->reset();
 
   result = result && (data2[0] == 0xAA);
+#ifdef _DEBUG_DEVICE_DS2408
+  Serial.println("HelperSwitchDevice::writeChannelAccessDS2408: 0x" + String(data[0], HEX) + " vs. 0x" + String(data2[1], HEX));
+#endif
 
   // return PIO pin status
   data[0] = data2[1];

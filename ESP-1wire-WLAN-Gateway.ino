@@ -35,7 +35,8 @@ bool httpRequestProcessed     = false;
 #define _MQTT_SUPPORT
 
 #define PROGNAME "Esp1wire"
-#define PROGVERS "0.2b"
+#define PROGVERS "0.2c"
+#define PROGBUILD String(__DATE__) + " " + String(__TIME__)
 
 #include "EspConfig.h"
 #include "Esp1wire.h"
@@ -192,23 +193,87 @@ void alarmSearch(Esp1wire::DeviceType filter) {
 
       message += SensorDataValuePort(Latch, 'A', channelStatus.latchA);
       message += SensorDataValuePort(Sense, 'A', channelStatus.senseA);
-      message += SensorDataValuePort(FlipFlopQ, 'A', channelStatus.flipFlopQA);
+      if (device->getOneWireDeviceType() == Esp1wire::DS2406)
+        message += SensorDataValuePort(FlipFlopQ, 'A', channelStatus.flipFlopQA);
 #ifdef _MQTT_SUPPORT
       if (sendMqtt) {
         espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'A'), String(channelStatus.latchA)); 
         espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'A'), String(channelStatus.senseA)); 
-        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(FlipFlopQ, 'A'), String(channelStatus.flipFlopQA)); 
+        if (device->getOneWireDeviceType() == Esp1wire::DS2406)
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(FlipFlopQ, 'A'), String(channelStatus.flipFlopQA)); 
       }
 #endif
-      if (channelStatus.noChannels == 2) {
+      if (channelStatus.noChannels >= 2) {
         message += SensorDataValuePort(Latch, 'B', channelStatus.latchB);
         message += SensorDataValuePort(Sense, 'B', channelStatus.senseB);
-        message += SensorDataValuePort(FlipFlopQ, 'B', channelStatus.flipFlopQB);
+        if (device->getOneWireDeviceType() == Esp1wire::DS2406)
+          message += SensorDataValuePort(FlipFlopQ, 'B', channelStatus.flipFlopQB);
 #ifdef _MQTT_SUPPORT
         if (sendMqtt) {
           espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'B'), String(channelStatus.latchB)); 
           espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'B'), String(channelStatus.senseB)); 
-          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(FlipFlopQ, 'B'), String(channelStatus.flipFlopQB)); 
+          if (device->getOneWireDeviceType() == Esp1wire::DS2406)
+            espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(FlipFlopQ, 'B'), String(channelStatus.flipFlopQB)); 
+        }
+#endif
+      }
+      if (channelStatus.noChannels >= 3) {
+        message += SensorDataValuePort(Latch, 'C', channelStatus.latchC);
+        message += SensorDataValuePort(Sense, 'C', channelStatus.senseC);
+#ifdef _MQTT_SUPPORT
+        if (sendMqtt) {
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'C'), String(channelStatus.latchC)); 
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'C'), String(channelStatus.senseC)); 
+        }
+#endif
+      }
+      if (channelStatus.noChannels >= 4) {
+        message += SensorDataValuePort(Latch, 'D', channelStatus.latchD);
+        message += SensorDataValuePort(Sense, 'D', channelStatus.senseD);
+#ifdef _MQTT_SUPPORT
+        if (sendMqtt) {
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'D'), String(channelStatus.latchD)); 
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'D'), String(channelStatus.senseD)); 
+        }
+#endif
+      }
+      if (channelStatus.noChannels >= 5) {
+        message += SensorDataValuePort(Latch, 'E', channelStatus.latchE);
+        message += SensorDataValuePort(Sense, 'E', channelStatus.senseE);
+#ifdef _MQTT_SUPPORT
+        if (sendMqtt) {
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'E'), String(channelStatus.latchE)); 
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'E'), String(channelStatus.senseE)); 
+        }
+#endif
+      }
+      if (channelStatus.noChannels >= 6) {
+        message += SensorDataValuePort(Latch, 'F', channelStatus.latchF);
+        message += SensorDataValuePort(Sense, 'F', channelStatus.senseF);
+#ifdef _MQTT_SUPPORT
+        if (sendMqtt) {
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'F'), String(channelStatus.latchF)); 
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'F'), String(channelStatus.senseF)); 
+        }
+#endif
+      }
+      if (channelStatus.noChannels >= 7) {
+        message += SensorDataValuePort(Latch, 'G', channelStatus.latchG);
+        message += SensorDataValuePort(Sense, 'G', channelStatus.senseG);
+#ifdef _MQTT_SUPPORT
+        if (sendMqtt) {
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'G'), String(channelStatus.latchG)); 
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'G'), String(channelStatus.senseG)); 
+        }
+#endif
+      }
+      if (channelStatus.noChannels == 8) {
+        message += SensorDataValuePort(Latch, 'H', channelStatus.latchH);
+        message += SensorDataValuePort(Sense, 'H', channelStatus.senseH);
+#ifdef _MQTT_SUPPORT
+        if (sendMqtt) {
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Latch, 'H'), String(channelStatus.latchH)); 
+          espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Sense, 'H'), String(channelStatus.senseH)); 
         }
 #endif
       }
@@ -342,8 +407,20 @@ String getDictionary() {
   DictionaryValuePort(Counter, 2) +
   DictionaryValuePort(Latch, 'A') +
   DictionaryValuePort(Latch, 'B') +
+  DictionaryValuePort(Latch, 'C') +
+  DictionaryValuePort(Latch, 'D') +
+  DictionaryValuePort(Latch, 'E') +
+  DictionaryValuePort(Latch, 'F') +
+  DictionaryValuePort(Latch, 'G') +
+  DictionaryValuePort(Latch, 'H') +
   DictionaryValuePort(Sense, 'A') +
   DictionaryValuePort(Sense, 'B') +
+  DictionaryValuePort(Sense, 'C') +
+  DictionaryValuePort(Sense, 'D') +
+  DictionaryValuePort(Sense, 'E') +
+  DictionaryValuePort(Sense, 'F') +
+  DictionaryValuePort(Sense, 'G') +
+  DictionaryValuePort(Sense, 'H') +
   DictionaryValuePort(FlipFlopQ, 'A') +
   DictionaryValuePort(FlipFlopQ, 'B') +
   DictionaryValuePort(Voltage, "VDD") +
@@ -455,7 +532,40 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
       }
       // DS2408
       if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
-        html=F("not implemented yet");
+        uint8_t curr = devConf.getValue(F("conditionalSearch")).toInt();
+        html += htmlLabel(F("sourceselect"), F("SourceSelect: "));
+        String options = htmlOption(String(Esp1wire::SwitchDevice::SourceSelectActivityLatch08), F("Activity Latch"), (curr & 0x01) == Esp1wire::SwitchDevice::SourceSelectActivityLatch08);
+        options += htmlOption(String(Esp1wire::SwitchDevice::SourceSelectPIOStatus08), F("PIO Status"), (curr & 0x01) == Esp1wire::SwitchDevice::SourceSelectPIOStatus08);
+        html += htmlSelect(F("sourceselect"), options) + htmlNewLine();
+        action += F("&sourceselect=");
+        html += htmlLabel(F("condition"), F("Condition: "));
+        options = htmlOption(String(Esp1wire::SwitchDevice::ConditionOR), F("OR"), (curr & 0x02) == Esp1wire::SwitchDevice::ConditionOR);
+        options += htmlOption(String(Esp1wire::SwitchDevice::ConditionAND), F("AND"), (curr & 0x02) == Esp1wire::SwitchDevice::ConditionAND);
+        html += htmlSelect(F("condition"), options) + htmlNewLine();
+        action += F("&condition=");
+        html += F("<table><tr><th>Channel</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>");
+        html += F("<tr><td>Select</td>");
+        curr = devConf.getValue(F("channelSelect")).toInt();
+        for (uint8_t idx=0; idx<=7; idx++) {
+          html += F("<td>");
+          html += htmlInput("cs" + String(idx), "checkbox", String(curr & (1 << idx) ? "1" : "0"), 1, "", "");
+          html += F("</td>");
+          action += "&cs" + String(idx) + "=";
+        }
+        html += F("</tr>");
+        html += F("<tr><td>Polarity</td>");
+        curr = devConf.getValue(F("channelPolarity")).toInt();
+        for (uint8_t idx=0; idx<=7; idx++) {
+          html += F("<td>");
+          html += htmlInput("cp" + String(idx), "checkbox", String(curr & (1 << idx) ? "1" : "0"), 1, "", "");
+          html += F("</td>");
+          action += "&cp" + String(idx) + "=";
+        }
+        html += F("</tr></table>");
+        html = htmlFieldSet(html, F("ConditionalSearch"));
+        html += htmlLabel(F("customName"), F("custom name: "));
+        html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+        action += F("&customName=");
       }
     }
     // battery
@@ -536,6 +646,53 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
       }
       // DS2408
       if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
+        int8_t sourceselect = server->arg(F("sourceselect")).toInt() & 0x01;
+  
+        switch(sourceselect) {
+          case Esp1wire::SwitchDevice::SourceSelectActivityLatch08:
+          case Esp1wire::SwitchDevice::SourceSelectPIOStatus08:
+            break;
+          default:
+            *resultCode = 403;
+            return F("wrong value for source select"); // SourceSelect: invalid value report Error
+            break;
+        }
+
+        int8_t condition = server->arg(F("condition")).toInt() & 0x02;
+        switch(condition) {
+          case Esp1wire::SwitchDevice::ConditionOR:
+          case Esp1wire::SwitchDevice::ConditionAND:
+            break;
+          default:
+            *resultCode = 403;
+            return F("wrong value for condition"); // Condition: invalid value report Error
+            break;
+        }
+
+        uint8_t cs = 0, cp = 0;
+        for (int i=0; i<=7; i++) {
+          int8_t csCurr = server->arg("cs" + String(i)).toInt();
+          if (csCurr == 1)
+            cs += (1 << i);
+          int8_t cpCurr = server->arg("cp" + String(i)).toInt();
+          if (cpCurr == 1)
+            cp += (1 << i);
+        }
+        Serial.println("cs: " + String(cs, HEX) + ", cp: " + String(cp, HEX));
+        EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
+        devConf.setValue(F("conditionalSearch"), String(sourceselect | condition));
+        devConf.setValue(F("channelSelect"), String(cs));
+        devConf.setValue(F("channelPolarity"), String(cp));
+  
+        if (server->arg(F("customName")) != "")
+          devConf.setValue(F("customName"), server->arg(F("customName")));
+        else
+          devConf.unsetValue(F("customName"));
+  
+        if (devConf.hasChanged()) {
+          devConf.saveToFile();
+          ((Esp1wire::SwitchDevice*)device)->readConfig();
+        }
       }
 
       *resultCode = 200;
@@ -716,36 +873,7 @@ String handleScheduleList() {
 }
 
 void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, unsigned long value2) {
-  Esp1wire::DeviceFilter df = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
-  Esp1wire::Device *device;
-  
   switch (r) {
-#ifdef _DEBUG_TEST_DATA
-    case 'c': // test data
-    case 't': // test data
-    case 'w': // test data
-      df = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
-      while (df.hasNext()) {
-        device = df.getNextDevice();
-        if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
-          if (r=='w') {
-            uint8_t data[1] = { 0x00 };
-            bool result = ((Esp1wire::SwitchDevice*)device)->readChannelAccess(data);
-            Serial.println("readChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
-            data[0] = ~data[0];
-            result = ((Esp1wire::SwitchDevice*)device)->writeChannelAccess(data);
-            Serial.println("writeChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
-          }
-          if (r=='c') {
-            uint8_t condSearch[3] = { 0x12, 0x34, 0x01 };
-            ((Esp1wire::SwitchDevice*)device)->setConditionalSearch(condSearch);
-          }
-          Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
-          ((Esp1wire::SwitchDevice*)device)->resetAlarm(&channelStatus);
-        }
-      }
-      break;
-#endif
 #ifdef _ESP_ME_SUPPORT
     case 'm': // Aussen klingeln Anfang
       Serial.print(F("send: monitor ein "));
@@ -765,12 +893,12 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
 //      esp1wire.probeGPIO();
 //      listDevices();
 //      break;
+#ifdef _DEBUG_DEVICE_DS2408
     case 't':
-      testDS2408(false);
-      break;
     case 'T':
-      testDS2408(true);
+      testDS2408((r == 'T'));
       break;
+#endif
     case 'r':
       esp1wire.resetSearch();
     case 'l':
@@ -900,6 +1028,7 @@ void handleCommandV() {
   #endif
   Serial.print(F(") "));
 #endif
+  Serial.print("compiled at " + PROGBUILD + " ");
 }
 
 void bmpDataCallback(float temperature, int pressure) {
@@ -944,20 +1073,33 @@ void print_warning(byte type, String msg) {
 
 void testDS2408(bool writeToDevice) {
 #ifdef _DEBUG_DEVICE_DS2408
-  Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
-  while (deviceFilter.hasNext()) {
-    Esp1wire::SwitchDevice *device = (Esp1wire::SwitchDevice*)deviceFilter.getNextDevice();
+  Esp1wire::DeviceFilter df = esp1wire.getDeviceFilter(Esp1wire::DeviceTypeSwitch);
+  Esp1wire::Device *device;
+  
+  while (df.hasNext()) {
+    device = df.getNextDevice();
+    if (device->getOneWireDeviceType() == Esp1wire::DS2408) {
+      Esp1wire::SwitchDevice *switchDevice = (Esp1wire::SwitchDevice*)device;
+      Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
 
-    Esp1wire::SwitchDevice::SwitchChannelStatus channelStatus;
-    device->getChannelInfo(&channelStatus);
+      if (writeToDevice) {
+        switchDevice->setConditionalSearch(Esp1wire::SwitchDevice::SourceSelectActivityLatch08, Esp1wire::SwitchDevice::ConditionOR, 0x01, 0x01);
+  
+//        uint8_t data[1] = { 0x00 };
+//        bool result = switchDevice->readChannelAccess(data);
+//        Serial.println("readChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
+//        data[0] = ~data[0];
+//        result = switchDevice->writeChannelAccess(data);
+//        Serial.println("writeChannelAccess: " + String(result ? "ok" : "failed") + " 0x" + String(data[0], HEX));
+      } else {
+//        switchDevice->resetAlarm(&channelStatus);
+//        uint8_t data[1] = { 0xFF };
+//        switchDevice->writeChannelAccess(data);
+      }
 
-    if (writeToDevice) {
-      uint8_t data[3] = { 0xFF, 0x00, 0x01 };
-      device->setConditionalSearch(data);
-
-      device->getChannelInfo(&channelStatus);
-    } else
-      ;//device->resetAlarm(&channelStatus);
+      switchDevice->getChannelInfo(&channelStatus);
+      Serial.println("testDS2408: ch. #" + String(channelStatus.noChannels));
+    }
   }
 #endif
 }
