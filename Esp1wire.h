@@ -424,12 +424,28 @@ class Esp1wire {
       , ChannelFlipFlopBoth         = 0x60
       };
 
+      enum ConditionalSearchSourceSelect08 : byte {
+        SourceSelectPIOStatus08       = 0x00
+      , SourceSelectActivityLatch08   = 0x01
+      };
+
+      enum ConditionalSearchCondition08 : byte {
+        ConditionOR       = 0x00
+      , ConditionAND      = 0x02
+      };
+
       typedef struct __attribute__((packed)) SwitchChannelStatus
       {
         uint8_t noChannels;
         bool parasite;
         bool latchA, senseA, flipFlopQA; 
         bool latchB, senseB, flipFlopQB;
+        bool latchC, senseC;
+        bool latchD, senseD;
+        bool latchE, senseE;
+        bool latchF, senseF;
+        bool latchG, senseG;
+        bool latchH, senseH;
       };
 
       typedef struct __attribute__((packed)) SwitchMemoryStatus
@@ -439,38 +455,50 @@ class Esp1wire {
         ConditionalSearchChannelSelect  csChannelSelect; 
         ChannelFlipFlop                 channelFlipFlop;
         bool                            parasite;
+        bool                            powerOnResetLatch;
       };
 
       SwitchDevice();
       bool getChannelInfo(SwitchChannelStatus *channelStatus);
       bool getMemoryStatus(SwitchMemoryStatus *memoryStatus);
       bool setConditionalSearch(ConditionalSearchPolarity csPolarity, ConditionalSearchSourceSelect csSourceSelect, ConditionalSearchChannelSelect csChannelSelect, ChannelFlipFlop channelFlipFlop);
+      bool setConditionalSearch(ConditionalSearchSourceSelect08 csSourceSelect08, ConditionalSearchCondition08 csCondition08, uint8_t csChannelSelectionMask, uint8_t csChannelPolarityMask);
       bool resetAlarm(SwitchChannelStatus *channelStatus);
 
       // DS2408
       bool readChannelAccess(uint8_t data[1]);
       bool writeChannelAccess(uint8_t data[1]);
-      bool setConditionalSearch(uint8_t data[3]);
       
       void readConfig();
 
     protected:
       // Status locations
       enum StatusMemoryFields : byte {
-        smfStatus       = 7
-      , smfCRC0         = 8
-      , smfCRC1         = 9
+        smfStatus06       = 7
+      , smfStatus08       = 5
+      , smfLogicalState08 = 0
+      , smfLatchActReg08  = 2
+      , smfCRC0           = 8
+      , smfCRC1           = 9
       };
 
-      enum StatusMemoryByteFields : byte {
-        smbfPolarity    = 0x01
-      , smbfSrcSelA     = 0x02
-      , smbfSrcSelB     = 0x04
-      , smbfChSelPioA   = 0x08
-      , smbfChSelPioB   = 0x10
-      , smbfPioA        = 0x20
-      , smbfPioB        = 0x40
-      , smbfPowerSupply = 0x80
+      enum StatusMemoryByteFields06 : byte {
+        smbf06Polarity    = 0x01
+      , smbf06SrcSelA     = 0x02
+      , smbf06SrcSelB     = 0x04
+      , smbf06ChSelPioA   = 0x08
+      , smbf06ChSelPioB   = 0x10
+      , smbf06PioA        = 0x20
+      , smbf06PioB        = 0x40
+      , smbf06PowerSupply = 0x80
+      };
+
+      enum StatusMemoryByteFields08 : byte {
+        smbf08PinOrLatch      = 0x01
+      , smbf08CondSearchLogic = 0x02
+      , smbf08Rstz            = 0x04
+      , smbf08PORL            = 0x08
+      , smbf08PowerSupply     = 0x80
       };
 
       // Channel Configuration Byte
@@ -519,6 +547,7 @@ class Esp1wire {
       bool              readStatus(SwitchMemoryStatus *memoryStatus);
       bool              writeStatus(uint8_t data[1]);
       bool              channelAccessInfo(SwitchChannelStatus *channelStatus, bool resetAlarm=false);
+      bool              setConditionalSearch(uint8_t data[3]);
     };
 
     // class CounterDevice
@@ -690,6 +719,7 @@ class Esp1wire {
       static bool setConditionalSearch(Bus *bus, uint8_t *address, uint8_t data[3]);
     protected:
       static bool readStatusDS2406(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
+      static bool readStatusDS2408(Bus *bus, uint8_t *address, SwitchMemoryStatus *memoryStatus);
       static bool writeStatusDS2406(Bus *bus, uint8_t *address, uint8_t data[1]);
       static bool writeStatusDS2408(Bus *bus, uint8_t *address, uint8_t data[3]);
       static bool channelAccessInfoDS2406(Bus *bus, uint8_t *address, SwitchChannelStatus *channelStatus, bool resetAlarm=false);

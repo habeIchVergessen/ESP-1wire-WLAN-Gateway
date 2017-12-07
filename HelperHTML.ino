@@ -15,6 +15,7 @@
 #define idField          F(" id=")
 #define classField       F(" class=")
 #define onChangeField    F(" onchange=");
+#define checkBox         "checkbox"
 
 // prototypes
 String htmlForm(String html, String pAction, String pMethod, String pID="", String pEnctype="", String pLegend="");
@@ -176,6 +177,8 @@ String htmlInput(String pName, String pType, String pValue, int pMaxLength, Stri
     result += pMaxNumber;
     result += textMark;
   }
+  if (pValue == "1" && pType == checkBox)
+    result += F(" checked");
   result += F(">");
   
   return result;

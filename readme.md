@@ -4,7 +4,7 @@ supported 1-wire devices
 - DS1822, DS1825, DS18S20, DS18B20
   - calculate and read temperature
   - set alarm temperature
-- DS2406/7
+- DS2406/7/8
   - configure conditional search options
   - read device state
 - DS2423
@@ -15,7 +15,7 @@ supported 1-wire devices
 
 
 missing features
-- DS2406/7
+- DS2406/7/8
   - direct read and write
 - DS2438
   - calibration and offset within calculations
