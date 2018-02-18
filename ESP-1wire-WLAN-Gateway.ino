@@ -1,5 +1,7 @@
 #include "Arduino.h"
 
+#define _ESP1WIRE_SUPPORT // required for WiFi
+
 #include "SPI.h"      // suppress compile errors from other libraries
 #include "Ticker.h"   // suppress compile errors from other libraries
 
@@ -35,10 +37,11 @@ bool httpRequestProcessed     = false;
 #define _MQTT_SUPPORT
 
 #define PROGNAME "Esp1wire"
-#define PROGVERS "0.2c"
+#define PROGVERS "0.3"
 #define PROGBUILD String(__DATE__) + " " + String(__TIME__)
 
 #include "EspConfig.h"
+#include "EspDebug.h"
 #include "Esp1wire.h"
 
 #ifdef _MQTT_SUPPORT
@@ -51,6 +54,7 @@ Esp1wire esp1wire;
 Esp1wire::Scheduler scheduler;
 
 EspConfig espConfig(PROGNAME);
+EspDebug espDebug;
 
 #ifdef _MQTT_SUPPORT
   EspMqtt espMqtt(PROGNAME);
@@ -84,28 +88,30 @@ void setup() {
   Serial.begin(115200);
   yield();
 
-  Serial.println("\n\n");
+  espDebug.enableSerialOutput();
   
+  DBG_PRINTLN("\n\n");
+
   setupEspTools();
   setupEspWifi();
 
   printHeapFree();
 
 #ifdef _PFANNEX
-  if (!esp1wire.probeI2C(4, 5) && !esp1wire.probeGPIO(2))
+  if (!esp1wire.probeI2C(4, 5) && !esp1wire.probeGPIO(2)) {
 #else
-  if (!esp1wire.probeI2C() && !esp1wire.probeGPIO())
+  if (!esp1wire.probeI2C() && !esp1wire.probeGPIO()) {
 #endif
-    Serial.println(F("no 1-wire detected!"));
-  else
+    DBG_PRINTLN(F("no 1-wire detected!"));
+  } else
     esp1wire.resetSearch();
 
   // for all detected devices
-  Serial.println(F("list all devices"));
+  DBG_PRINTLN(F("list all devices"));
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter();
   while (deviceFilter.hasNext()) {
     Esp1wire::Device *device = deviceFilter.getNextDevice();
-    Serial.println("device: " + device->getOneWireDeviceID() + " -> " + device->getName());
+    DBG_PRINTLN("device: " + device->getOneWireDeviceID() + " -> " + device->getName());
   }
 
   // deviceConfig handler
@@ -133,6 +139,9 @@ void setup() {
 #ifdef _DEBUG_TEST_DATA
   esp1wire.testData();
 #endif
+
+  espDebug.begin();
+  espDebug.registerInputCallback(handleInputStream);
 }
 
 void loop() {
@@ -150,9 +159,7 @@ void loop() {
   loopEspTools();
 
   // handle input
-  if (Serial.available()) {
-    handleSerialPort(Serial.read());
-  }
+  handleInputStream(&Serial);
 
 #ifdef _MQTT_SUPPORT
   espMqtt.disconnect();
@@ -161,6 +168,9 @@ void loop() {
 #ifdef _ESP_ME_SUPPORT
   espMe.processRecvData();
 #endif
+
+  // send debug data
+  espDebug.loop();
 }
 
 void alarmSearch(Esp1wire::DeviceType filter) {
@@ -386,13 +396,13 @@ void listDevices() {
   Esp1wire::DeviceFilter deviceFilter = esp1wire.getDeviceFilter();
   while (deviceFilter.hasNext()) {
     Esp1wire::Device *device = deviceFilter.getNextDevice();
-    Serial.println("device: " + device->getOneWireDeviceID() + " -> " + device->getName());
+    DBG_PRINTLN("device: " + device->getOneWireDeviceID() + " -> " + device->getName());
   }
 }
 
 void printHeapFree() {
 #ifdef _DEBUG_HEAP
-  Serial.println((String)F("heap: ") + (String)(ESP.getFreeHeap()));
+  DBG_PRINTLN((String)F("heap: ") + (String)(ESP.getFreeHeap()));
 #endif
 }
 
@@ -485,14 +495,14 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
       }
     
       html += htmlLabel(F("minTemp"), F("min. temperature: "));
-      html += htmlInput(F("minTemp"), F("number"), minStr, 0, "-55", "125") + htmlNewLine();
+      html += htmlInput(F("minTemp"), F("number"), minStr, 0, "-55", "125", "") + htmlNewLine();
       action += F("&minTemp=");
       html += htmlLabel(F("maxTemp"), F("max. temperature: "));
-      html += htmlInput(F("maxTemp"), F("number"), maxStr, 0, "-55", "125");
+      html += htmlInput(F("maxTemp"), F("number"), maxStr, 0, "-55", "125", "");
       action += F("&maxTemp=");
       html = htmlFieldSet(html, F("ConditionalSearch"));
       html += htmlLabel(F("customName"), F("custom name: "));
-      html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+      html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "", "");
       action += F("&customName=");
     }
     // switch
@@ -527,7 +537,7 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
         action += F("&channelflipflop=");
         html = htmlFieldSet(html, F("ConditionalSearch"));
         html += htmlLabel(F("customName"), F("custom name: "));
-        html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+        html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "", "");
         action += F("&customName=");
       }
       // DS2408
@@ -548,7 +558,7 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
         curr = devConf.getValue(F("channelSelect")).toInt();
         for (uint8_t idx=0; idx<=7; idx++) {
           html += F("<td>");
-          html += htmlInput("cs" + String(idx), "checkbox", String(curr & (1 << idx) ? "1" : "0"), 1, "", "");
+          html += htmlInput("cs" + String(idx), "checkbox", String(curr & (1 << idx) ? "1" : "0"), 1, "", "", "");
           html += F("</td>");
           action += "&cs" + String(idx) + "=";
         }
@@ -557,14 +567,14 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
         curr = devConf.getValue(F("channelPolarity")).toInt();
         for (uint8_t idx=0; idx<=7; idx++) {
           html += F("<td>");
-          html += htmlInput("cp" + String(idx), "checkbox", String(curr & (1 << idx) ? "1" : "0"), 1, "", "");
+          html += htmlInput("cp" + String(idx), "checkbox", String(curr & (1 << idx) ? "1" : "0"), 1, "", "", "");
           html += F("</td>");
           action += "&cp" + String(idx) + "=";
         }
         html += F("</tr></table>");
         html = htmlFieldSet(html, F("ConditionalSearch"));
         html += htmlLabel(F("customName"), F("custom name: "));
-        html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+        html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "", "");
         action += F("&customName=");
       }
     }
@@ -578,7 +588,7 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
       html += htmlSelect(F("request"), options) + htmlNewLine();
       action += F("&request=");
       html += htmlLabel(F("customName"), F("custom name: "));
-      html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "");
+      html += htmlInput(F("customName"), "", devConf.getValue(F("customName")), 20, "", "", "");
       action += F("&customName=");
     }
     
@@ -678,7 +688,7 @@ String handleDeviceConfig(ESP8266WebServer *server, uint16_t *resultCode) {
           if (cpCurr == 1)
             cp += (1 << i);
         }
-        Serial.println("cs: " + String(cs, HEX) + ", cp: " + String(cp, HEX));
+        DBG_PRINTLN("cs: " + String(cs, HEX) + ", cp: " + String(cp, HEX));
         EspDeviceConfig devConf = espConfig.getDeviceConfig(deviceID);
         devConf.setValue(F("conditionalSearch"), String(sourceselect | condition));
         devConf.setValue(F("channelSelect"), String(cs));
@@ -770,7 +780,7 @@ String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
     bool useValues = (isNumber && scheduler.getSchedule(schedule.toInt(), &interval, &action, &filter));
   
     result = htmlLabel(F("interval"), F("Interval"));
-    result += htmlInput(F("interval"), F("number"), String(useValues ? String(interval) : "60"), 0, F("1"), F("3600")) + htmlNewLine();
+    result += htmlInput(F("interval"), F("number"), String(useValues ? String(interval) : "60"), 0, F("1"), F("3600"), F("")) + htmlNewLine();
     result +=  htmlLabel(F("schedAction"), F("Action"));
     String options = htmlOption(String(Esp1wire::Scheduler::scheduleAlarmSearch), F("AlarmSearch"), (useValues && action == Esp1wire::Scheduler::scheduleAlarmSearch));
     options += htmlOption(String(Esp1wire::Scheduler::scheduleRequestTemperatues), F("RequestTemperatues"), (useValues && action == Esp1wire::Scheduler::scheduleRequestTemperatues));
@@ -803,7 +813,7 @@ String handleScheduleConfig(ESP8266WebServer *server, uint16_t *resultCode) {
     Esp1wire::Scheduler::ScheduleAction action;
     Esp1wire::DeviceType filter = Esp1wire::DeviceTypeAll;
     
-//    Serial.print("handleScheduleConfig: submit idx " + schedule + ", intStr " + intStr + ", actStr " + actStr + ", filtStr " + filtStr + ", interval " + String(interval));
+//    DBG_PRINT("handleScheduleConfig: submit idx " + schedule + ", intStr " + intStr + ", actStr " + actStr + ", filtStr " + filtStr + ", interval " + String(interval));
     
     if (interval == 0) {
       *resultCode = 403;
@@ -876,16 +886,16 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
   switch (r) {
 #ifdef _ESP_ME_SUPPORT
     case 'm': // Aussen klingeln Anfang
-      Serial.print(F("send: monitor ein "));
+      DBG_PRINT(F("send: monitor ein "));
       espMe.send(EspMe::SW02_11, EspMe::cmd_hangup);
       espMe.delayCnt(35);
       espMe.send(EspMe::SW02_11, EspMe::cmd_monitor);
-      Serial.println(F("ok"));
+      DBG_PRINTLN(F("ok"));
       break;
     case 'M': // Aussen klingeln Ende
-      Serial.print(F("send: monitor aus "));
+      DBG_PRINT(F("send: monitor aus "));
       espMe.send(EspMe::SW02_11, EspMe::cmd_hangup);
-      Serial.println(F("ok"));
+      DBG_PRINTLN(F("ok"));
       break;
 #endif
 //    case 'p':
@@ -904,7 +914,7 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
     case 'l':
       listDevices();
     case 'u':
-      Serial.println("uptime: " + uptime());
+      DBG_PRINTLN("uptime: " + uptime());
       printHeapFree();
       break;
     case 'v':
@@ -917,23 +927,23 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
     case '\r':
       break;
     case '?':
-      Serial.println();
-      Serial.println(F("usage:"));
-      Serial.println(F("# 1-wire"));
-      Serial.println(F("r - resetSearch"));
-      Serial.println(F("l - list devices"));
-      Serial.println(F("u - uptime"));
+      DBG_PRINTLN();
+      DBG_PRINTLN(F("usage:"));
+      DBG_PRINTLN(F("# 1-wire"));
+      DBG_PRINTLN(F("r - resetSearch"));
+      DBG_PRINTLN(F("l - list devices"));
+      DBG_PRINTLN(F("u - uptime"));
 #ifdef _ESP_ME_SUPPORT
-      Serial.println(F("# m-e"));
-      Serial.println(F("m - Monitor ein"));
-      Serial.println(F("M - Monitor aus"));
-      Serial.println(F("t - Summer innen"));
+      DBG_PRINTLN(F("# m-e"));
+      DBG_PRINTLN(F("m - Monitor ein"));
+      DBG_PRINTLN(F("M - Monitor aus"));
+      DBG_PRINTLN(F("t - Summer innen"));
 #endif
-      Serial.println();
+      DBG_PRINTLN();
       break;
     default:
       handleCommandV();
-      Serial.println("uptime: " + uptime());
+      DBG_PRINTLN("uptime: " + uptime());
 /*
 #ifndef NOHELP
       Help::Show();
@@ -942,10 +952,13 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
     }
 }
 
-void handleSerialPort(char c) {
+void handleInputStream(Stream *input) {
+  if (!input->available())
+    return;
+
   static long value, value2;
   bool hasValue, hasValue2;
-  char r = c;
+  char r = input->read();
 
   // reset variables
   value = 0; hasValue = false;
@@ -983,17 +996,17 @@ void handleSerialPort(char c) {
       }
             
       // wait a little bit for more input
-      while (Serial.available() == 0 && delays > 0) {
+      while (input->available() == 0 && delays > 0) {
         delay(20);
         delays--;
       }
 
       // more input available
-      if (delays == 0 && Serial.available() == 0) {
+      if (delays == 0 && input->available() == 0) {
         return;
       }
 
-      r = Serial.read();
+      r = input->read();
     }
   }
 
@@ -1009,26 +1022,26 @@ void handleSerialPort(char c) {
 }
 
 void handleCommandV() {
-  Serial.print(F("["));
-  Serial.print(PROGNAME);
-  Serial.print(F("."));
-  Serial.print(PROGVERS);
+  DBG_PRINT(F("["));
+  DBG_PRINT(PROGNAME);
+  DBG_PRINT(F("."));
+  DBG_PRINT(PROGVERS);
 
-  Serial.print(F("] "));
+  DBG_PRINT(F("] "));
 #if defined(_MQTT_SUPPORT) || defined(_ESP_ME_SUPPORT)
-  Serial.print(F("("));
+  DBG_PRINT(F("("));
   #ifdef _MQTT_SUPPORT
-    Serial.print(F("mqtt"));
+    DBG_PRINT(F("mqtt"));
   #endif
   #ifdef _ESP_ME_SUPPORT
     #ifdef _MQTT_SUPPORT
-      Serial.print(F(","));
+      DBG_PRINT(F(","));
     #endif
-    Serial.print(F("m-e"));
+    DBG_PRINT(F("m-e"));
   #endif
-  Serial.print(F(") "));
+  DBG_PRINT(F(") "));
 #endif
-  Serial.print("compiled at " + PROGBUILD + " ");
+  DBG_PRINT("compiled at " + PROGBUILD + " ");
 }
 
 void bmpDataCallback(float temperature, int pressure) {
@@ -1055,20 +1068,20 @@ void sendMessage(String message, unsigned long startTime) {
 void print_config() {
   String blank = F(" ");
   
-  Serial.print(F("config:"));
-  Serial.println();
+  DBG_PRINT(F("config:"));
+  DBG_PRINTLN();
 }
 
 void print_warning(byte type, String msg) {
   return;
-  Serial.print(F("\nwarning: "));
+  DBG_PRINT(F("\nwarning: "));
   if (type == 1)
-    Serial.print(F("skipped incomplete command "));
+    DBG_PRINT(F("skipped incomplete command "));
   if (type == 2)
-    Serial.print(F("wrong parameter "));
+    DBG_PRINT(F("wrong parameter "));
   if (type == 3)
-    Serial.print(F("failed: "));
-  Serial.println(msg);
+    DBG_PRINT(F("failed: "));
+  DBG_PRINTLN(msg);
 }
 
 void testDS2408(bool writeToDevice) {
@@ -1098,7 +1111,7 @@ void testDS2408(bool writeToDevice) {
       }
 
       switchDevice->getChannelInfo(&channelStatus);
-      Serial.println("testDS2408: ch. #" + String(channelStatus.noChannels));
+      DBG_PRINTLN("testDS2408: ch. #" + String(channelStatus.noChannels));
     }
   }
 #endif

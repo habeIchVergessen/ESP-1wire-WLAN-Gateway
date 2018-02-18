@@ -51,7 +51,7 @@ bool EspMqtt::connect(String server, String port, String user, String password, 
     disconnect();
 
 #ifdef _DEBUG_MQTT
-  Serial.print("connecting to MQTT-Broker: ");
+  DBG_PRINT("connecting to MQTT-Broker: ");
   unsigned long connStart = micros();
 #endif
 
@@ -62,7 +62,7 @@ bool EspMqtt::connect(String server, String port, String user, String password, 
   }
 
 #ifdef _DEBUG_MQTT
-  Serial.println(String(conn ? "connected " : "failed") + elapTime(connStart));
+  DBG_PRINTLN(String(conn ? "connected " : "failed") + elapTime(connStart));
 #endif
 
   return conn;
@@ -82,14 +82,14 @@ bool EspMqtt::publish(String topic, String value, bool keepConnection) {
     return false;
 
 #if defined(_DEBUG_MQTT) || defined(_DEBUG_TIMING)
-  Serial.print("EspMqtt::publish: topic = '" + mMqttTopicPrefix + topic + "' value '" + value + "'");
+  DBG_PRINT("EspMqtt::publish: topic = '" + mMqttTopicPrefix + topic + "' value '" + value + "'");
   unsigned long pubStart = micros();
 #endif
 
   mqttClient.publish(String(mMqttTopicPrefix + topic).c_str(), value.c_str());
 
 #if defined(_DEBUG_MQTT) || defined(_DEBUG_TIMING)
-  Serial.println(" " + elapTime(pubStart));
+  DBG_PRINTLN(" " + elapTime(pubStart));
 #endif
 
   if (!keepConnection)

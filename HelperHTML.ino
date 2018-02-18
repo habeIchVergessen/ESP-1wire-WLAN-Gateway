@@ -16,10 +16,11 @@
 #define classField       F(" class=")
 #define onChangeField    F(" onchange=");
 #define checkBox         "checkbox"
+#define ipAddress        "ipAddress"
 
 // prototypes
 String htmlForm(String html, String pAction, String pMethod, String pID="", String pEnctype="", String pLegend="");
-String htmlInput(String pName, String pType, String pValue, int pMaxLength=0, String pMinNumber="", String pMaxNumber="");
+String htmlInput(String pName, String pType, String pValue, int pMaxLength=0, String pMinNumber="", String pMaxNumber="", String pPlaceHolder="");
 String htmlFieldSet(String pHtml, String pLegend="");
 String htmlOption(String pValue, String pText, bool pSelected=false);
 String htmlSelect(String pName, String pOptions, String pOnChange="");
@@ -53,6 +54,28 @@ String wifiForm() {
   return htmlForm(html, action, "post", "configForm");
 }
 
+String netForm() {
+  struct station_config current_conf;
+  
+  String action = F("/config?ChipID=");
+  action += getChipID();
+  action += F("&net=submit&hostname=&address=&mask=&gateway=&dns=");
+
+  String html = htmlLabel("hostname", "hostname: ");
+  String hostname = WiFi.hostname(), defaultHostname = getDefaultHostname();
+  html += htmlInput("hostname", "",  (hostname == defaultHostname ? "" : hostname), 32, "", "", defaultHostname) + htmlNewLine();
+  html += htmlLabel("address", "ip: ");
+  html += htmlInput("address", ipAddress,  espConfig.getValue("address"), 15) + htmlNewLine();
+  html += htmlLabel("mask", "mask: ");
+  html += htmlInput("mask", ipAddress,  espConfig.getValue("mask"), 15) + htmlNewLine();
+  html += htmlLabel("gateway", "gateway: ");
+  html += htmlInput("gateway", ipAddress,  espConfig.getValue("gateway"), 15) + htmlNewLine();
+  html += htmlLabel("dns", "dns: ");
+  html += htmlInput("dns", ipAddress,  espConfig.getValue("dns"), 15) + htmlNewLine();
+
+  return htmlForm(html, action, "post", "configForm");
+}
+
 #ifdef _MQTT_SUPPORT
 String mqttForm() {
   String action = F("/config?ChipID=");
@@ -81,6 +104,16 @@ String flashForm() {
 
   return htmlForm(html, action, "post", "submitForm", "multipart/form-data");
 }
+
+#ifdef _OTA_ATMEGA328_SERIAL
+String flashAddonForm() {
+  String action = F("/ota/atmega328.bin");
+
+  String html = htmlInput("file", "file", "", 0) + htmlNewLine();
+
+  return htmlForm(html, action, "post", "submitForm", "multipart/form-data");
+}
+#endif
 
 String htmlForm(String html, String pAction, String pMethod, String pID, String pEnctype, String pLegend) {
   String result = F("<form");
@@ -142,7 +175,7 @@ String htmlLabel(String pFor, String pText) {
   return result;
 }
 
-String htmlInput(String pName, String pType, String pValue, int pMaxLength, String pMinNumber, String pMaxNumber) {
+String htmlInput(String pName, String pType, String pValue, int pMaxLength, String pMinNumber, String pMaxNumber, String pPlaceHolder) {
   String result = F("<input ");
   result += nameField;
   result += textMark;
@@ -150,7 +183,7 @@ String htmlInput(String pName, String pType, String pValue, int pMaxLength, Stri
   result += textMark;
   result += typeField;
   result += textMark;
-  result += (pType != "" ? pType : "text");
+  result += (pType != "" && pType != ipAddress ? pType : "text");
   result += textMark;
   
   if (pValue != "") {
@@ -179,6 +212,10 @@ String htmlInput(String pName, String pType, String pValue, int pMaxLength, Stri
   }
   if (pValue == "1" && pType == checkBox)
     result += F(" checked");
+  if (pType == ipAddress)
+    result += " placeholder=\"0.0.0.0\" pattern=\"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$\"";
+  if (pPlaceHolder != "")
+    result += " placeholder=\"" + pPlaceHolder + "\"";
   result += F(">");
   
   return result;

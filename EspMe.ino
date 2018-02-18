@@ -43,9 +43,9 @@ void EspMe::processRecvData() {
 
       // skip hangup
       if (fifo.queueLength() > 1) {
-        Serial.print("skip hangup (gap: ");
-        Serial.print(gap/1000);
-        Serial.println(" ms)");
+        DBG_PRINT("skip hangup (gap: ");
+        DBG_PRINT(gap/1000);
+        DBG_PRINTLN(" ms)");
         fifo.dequeue(meData);
         meData = fifo.next();
       }
@@ -102,8 +102,8 @@ void EspMe::processRecvData() {
     sendMessage(msg);
     lastProcessedCommand = meData->command;
   } else {
-    Serial.print("unknown station/command! raw: 0x");
-    Serial.println(meData->raw, HEX);
+    DBG_PRINT("unknown station/command! raw: 0x");
+    DBG_PRINTLN(meData->raw, HEX);
   }
 
   fifo.dequeue(meData);
@@ -113,7 +113,7 @@ void EspMe::processRecvData() {
 void EspMe::send(station_t station, command_t cmd) {
   if (state == state_recv) {
     if (recvInAction()) {
-      Serial.print(" recv in action ");
+      DBG_PRINT(" recv in action ");
       return;
     }
     receiverEnable(false);
