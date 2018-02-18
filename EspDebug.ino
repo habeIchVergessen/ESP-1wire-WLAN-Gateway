@@ -89,7 +89,7 @@ void EspDebug::loop() {
   sendBuffer();  
 
   // input from network
-  while (m_DbgClient.available() && m_inputCallback != NULL)
+  while (m_DbgClient.available() > 0 && m_inputCallback != NULL)
     m_inputCallback(&m_DbgClient);
 }
 

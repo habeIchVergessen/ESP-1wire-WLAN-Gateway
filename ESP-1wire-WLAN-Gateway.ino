@@ -953,7 +953,7 @@ void handleInput(char r, bool hasValue, unsigned long value, bool hasValue2, uns
 }
 
 void handleInputStream(Stream *input) {
-  if (!input->available())
+  if (input->available() <= 0)
     return;
 
   static long value, value2;
@@ -996,13 +996,13 @@ void handleInputStream(Stream *input) {
       }
             
       // wait a little bit for more input
-      while (input->available() == 0 && delays > 0) {
+      while (input->available() <= 0 && delays > 0) {
         delay(20);
         delays--;
       }
 
       // more input available
-      if (delays == 0 && input->available() == 0) {
+      if (delays == 0 && input->available() <= 0) {
         return;
       }
 
