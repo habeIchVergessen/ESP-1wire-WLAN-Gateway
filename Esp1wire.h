@@ -13,6 +13,7 @@
 #include "OneWire.h"
 
 #include "EspConfig.h"
+#include "EspDebug.h"
 
 #include "DS2482.h"
 // fix malformed define
