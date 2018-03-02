@@ -1,3 +1,5 @@
+#ifdef ESP8266
+
 #ifdef _MQTT_SUPPORT
   #include "EspConfig.h"
 #endif
@@ -306,4 +308,6 @@ String htmlSelect(String pName, String pOptions, String pOnChange) {
 
   return result;
 }
+
+#endif  // ESP8266
 

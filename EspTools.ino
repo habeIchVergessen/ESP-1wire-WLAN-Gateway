@@ -1,3 +1,9 @@
+#ifndef BUILTIN_LED
+  #if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO)
+    #define BUILTIN_LED 9
+  #endif
+#endif
+
 void setupEspTools() {
   pinMode(BUILTIN_LED, OUTPUT);
   setLed(false);

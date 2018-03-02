@@ -1,3 +1,5 @@
+#ifdef ESP8266
+
 #include "Arduino.h"
 #include "EspWifi.h"
 #include "ESP8266WiFi.h"
@@ -988,4 +990,7 @@ void httpHandleOTAatmega328Data() {
   }
 }
 
-#endif
+#endif  // _OTA_ATMEGA328_SERIAL
+
+#endif  // ESP8266
+

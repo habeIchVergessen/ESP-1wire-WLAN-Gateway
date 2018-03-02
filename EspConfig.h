@@ -3,6 +3,8 @@
 
 #include "Arduino.h"
 
+#ifdef ESP8266
+
 #include "FS.h"
 
 class EspDeviceConfig;
@@ -45,5 +47,7 @@ public:
 };
 
 extern EspConfig espConfig;
+
+#endif  // ESP8266
 
 #endif	// _ESP_CONFIG_H

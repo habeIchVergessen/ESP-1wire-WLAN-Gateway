@@ -1,28 +1,50 @@
-#include "Debug.h"
+#include "EspDebug.h"
 
 EspDebug::EspDebug() {
 }
 
 EspDebug::~EspDebug() {
+#ifdef ESP8266
   m_DbgServer = NULL;
+#endif
 }
 
 
 // Stream overrides
 int EspDebug::available() {
-  return m_DbgClient.available();
+  int result = -1;
+  
+#ifdef ESP8266
+  result = m_DbgClient.available();
+#endif
+
+  return result;
 }
 
 int EspDebug::read() {
-  return m_DbgClient.read();
+  int result = -1;
+  
+#ifdef ESP8266
+  result = m_DbgClient.read();
+#endif
+
+  return result;
 }
 
 int EspDebug::peek() {
-  return m_DbgClient.peek();
+  int result = -1;
+
+#ifdef ESP8266
+  result = m_DbgClient.peek();
+#endif
+
+  return result;
 }
 
 void EspDebug::flush() {
+#ifdef ESP8266
   m_DbgClient.flush();
+#endif
 }
 
 // Print
@@ -33,7 +55,7 @@ size_t EspDebug::write(uint8_t data) {
 size_t EspDebug::write(const uint8_t *buffer, size_t size) {
   size_t result = 0;
 
-  if (!m_serialOut && !m_setupLog && m_DbgClient.status() == CLOSED)
+  if (!m_serialOut && !m_setupLog && dbgClientClosed())
     return -1;
     
   for (size_t i=0; i<size; i++) {
@@ -59,19 +81,36 @@ size_t EspDebug::write(const uint8_t *buffer, size_t size) {
 }
 
 // others
+bool EspDebug::dbgClientClosed() {
+  bool result = false;
+
+#ifdef ESP8266
+  result = m_DbgClient.status() == CLOSED;
+#endif
+
+  return result;
+}
+
 void EspDebug::begin(uint16_t dbgServerPort) {
+#ifdef ESP8266
   m_DbgServer = WiFiServer(dbgServerPort);
   m_DbgServer.begin();
   m_DbgServer.setNoDelay(true);
+#endif
 }
 
 void EspDebug::loop() {
+  // stop setup log on first loop call
+//  if (m_setupLog)
+//    m_setupLog = false;
+    
   // probe new client
+#ifdef ESP8266
   if (m_DbgServer.hasClient()) {
     WiFiClient dbgClient = m_DbgServer.available();
 
     // discarding connection attempts if client is connected
-    if (m_DbgClient.status() != CLOSED) {
+    if (!dbgClientClosed()) {
       dbgClient.stop();
     } else {
     // accept new connection
@@ -84,13 +123,16 @@ void EspDebug::loop() {
         print("\n...\n\n");
     }
   }
+#endif
 
   // output to network
   sendBuffer();  
 
   // input from network
+#ifdef ESP8266
   while (m_DbgClient.available() > 0 && m_inputCallback != NULL)
     m_inputCallback(&m_DbgClient);
+#endif
 }
 
 void EspDebug::sendWriteBuffer() {
@@ -106,10 +148,13 @@ void EspDebug::sendBuffer() {
   if (m_inPos == 0)
     return;
 
-  if (m_serialOut)
+#ifdef ESP8266
+  if (m_serialOut && !m_setupLog)
+#endif
     Serial.write(&m_buffer[0], m_inPos);
     
-  if (m_DbgClient.status() == CLOSED) {
+#ifdef ESP8266
+  if (dbgClientClosed()) {
     if (!m_setupLog)
       m_inPos = 0;
     return;
@@ -122,6 +167,7 @@ void EspDebug::sendBuffer() {
     memcpy(&m_buffer[0], &m_buffer[socketSend], (m_inPos - socketSend));
     m_inPos -= socketSend;
   } else
+#endif
     m_inPos = 0;
 }
 
