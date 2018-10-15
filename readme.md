@@ -26,4 +26,4 @@ environment
 [Arduino IDE v1.6.13](https://www.arduino.cc/download_handler.php?f=/arduino-1.6.13-windows.zip)
 
 required libraries
-[ESP8266 v2.3.0](https://github.com/esp8266/Arduino#installing-with-boards-manager), [submodules: DS2482, OneWire v2.3.3](./libraries/)
+[ESP8266 v2.3.0](https://github.com/esp8266/Arduino#installing-with-boards-manager), [submodules: DS2482, OneWire v2.3.3, pubsubclient v2.6](./libraries/)
