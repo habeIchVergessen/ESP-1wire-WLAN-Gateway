@@ -68,8 +68,8 @@ class EspDebug : public Stream {
 #else
     static const uint16_t m_bufferSize = 64;
 #endif
-    byte m_buffer[m_bufferSize];
-    uint16_t m_inPos = 0;
+    byte m_buffer[m_bufferSize+1];
+    uint16_t m_inPos = 0, m_SerialOut = 0;
     boolean m_bufferedWrite = true;
     boolean m_setupLog = true;
     boolean m_serialOut = false;
@@ -79,6 +79,7 @@ class EspDebug : public Stream {
 
     WiFiServer m_DbgServer = NULL;
     WiFiClient m_DbgClient;
+    String m_SetupLogData = "";
 #endif
 };
 

@@ -60,14 +60,16 @@ size_t EspDebug::write(const uint8_t *buffer, size_t size) {
     
   for (size_t i=0; i<size; i++) {
     // force send
-    if (m_inPos == m_bufferSize) {
-      if (m_setupLog)
-        m_setupLog = false;
-      sendBuffer();
-    }
-
     if (m_inPos == m_bufferSize)
+      sendBuffer();
+
+    // probe send result
+    if (m_inPos == m_bufferSize) {
+      // write all to Serial
+      if (m_serialOut)
+        result = Serial.write(&buffer[i], (size - i));
       return result;
+    }
 
     m_buffer[m_inPos] = buffer[i];
     m_inPos++;
@@ -100,10 +102,6 @@ void EspDebug::begin(uint16_t dbgServerPort) {
 }
 
 void EspDebug::loop() {
-  // stop setup log on first loop call
-//  if (m_setupLog)
-//    m_setupLog = false;
-    
   // probe new client
 #ifdef ESP8266
   if (m_DbgServer.hasClient()) {
@@ -119,8 +117,13 @@ void EspDebug::loop() {
       m_DbgClient = dbgClient;
       m_DbgClient.setNoDelay(true);
 
-      if (m_inPos == m_bufferSize)
-        print("\n...\n\n");
+      // force send
+      if (m_SetupLogData != "") {
+          m_DbgClient.write(m_SetupLogData.c_str(), m_SetupLogData.length());
+          if (m_SetupLogData.length() == m_bufferSize)
+            m_DbgClient.write("\n...\n\n");
+          m_SetupLogData = "";
+      }
     }
   }
 #endif
@@ -148,15 +151,21 @@ void EspDebug::sendBuffer() {
   if (m_inPos == 0)
     return;
 
-#ifdef ESP8266
-  if (m_serialOut && !m_setupLog)
-#endif
-    Serial.write(&m_buffer[0], m_inPos);
+  if (m_serialOut) {
+    int wrote = Serial.write(&m_buffer[m_SerialOut], (m_inPos - m_SerialOut));
+    if (wrote > 0)
+      m_SerialOut += wrote;
+  }
     
 #ifdef ESP8266
   if (dbgClientClosed()) {
+    if (m_setupLog && m_inPos == m_bufferSize) {
+      m_buffer[m_inPos] = 0;
+      m_SetupLogData = String((char*)m_buffer);
+      m_setupLog = false;
+    }
     if (!m_setupLog)
-      m_inPos = 0;
+      m_inPos = m_SerialOut = 0;
     return;
   }
 
@@ -166,9 +175,10 @@ void EspDebug::sendBuffer() {
   if (socketSend < m_inPos) {
     memcpy(&m_buffer[0], &m_buffer[socketSend], (m_inPos - socketSend));
     m_inPos -= socketSend;
+    m_SerialOut -= socketSend;
   } else
 #endif
-    m_inPos = 0;
+    m_inPos = m_SerialOut = 0;
 }
 
 

@@ -20,6 +20,7 @@
 
 byte BMP_ID                   = 0;
 bool httpRequestProcessed     = false;
+bool optionsChanged           = false;
 
 //#define _DEBUG
 #define _DEBUG_SETUP
@@ -37,7 +38,7 @@ bool httpRequestProcessed     = false;
 #define _MQTT_SUPPORT
 
 #define PROGNAME "Esp1wire"
-#define PROGVERS "0.3"
+#define PROGVERS "0.4"
 #define PROGBUILD String(__DATE__) + " " + String(__TIME__)
 
 #include "EspConfig.h"
@@ -54,6 +55,7 @@ Esp1wire esp1wire;
 Esp1wire::Scheduler scheduler;
 
 EspConfig espConfig(PROGNAME);
+EspWiFi espWiFi;
 EspDebug espDebug;
 
 #ifdef _MQTT_SUPPORT
@@ -74,7 +76,7 @@ bool sendKeyValueProtocol = true;
 #endif
 
 // m-e Vistadoor support
-//#define _ESP_ME_SUPPORT
+#define _ESP_ME_SUPPORT
 #ifdef _ESP_ME_SUPPORT
   #include "PacketFifo.h"
   #include "EspMe.h"
@@ -93,7 +95,7 @@ void setup() {
   DBG_PRINTLN("\n\n");
 
   setupEspTools();
-  setupEspWifi();
+  EspWiFi::setup();
 
   printHeapFree();
 
@@ -115,12 +117,12 @@ void setup() {
   }
 
   // deviceConfig handler
-  registerDeviceConfigCallback(handleDeviceConfig);
-  registerDeviceListCallback(handleDeviceList);
+  espWiFi.registerDeviceConfigCallback(handleDeviceConfig);
+  espWiFi.registerDeviceListCallback(handleDeviceList);
   
   // scheduleConfig handler
-  registerScheduleConfigCallback(handleScheduleConfig);
-  registerScheduleListCallback(handleScheduleList);
+  espWiFi.registerScheduleConfigCallback(handleScheduleConfig);
+  espWiFi.registerScheduleListCallback(handleScheduleList);
 
   // scheduler
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleAlarmSearch, alarmSearch);
@@ -153,7 +155,7 @@ void loop() {
   scheduler.runSchedules();
   
   // handle wifi
-  loopEspWifi();
+  EspWiFi::loop();
 
   // tools
   loopEspTools();
@@ -1049,18 +1051,20 @@ void bmpDataCallback(float temperature, int pressure) {
 }
 
 void sendMessage(String message) {
-  Serial.println(message);  
-  sendMultiCast(message);
+  DBG_PRINTLN(message);  
+  espWiFi.sendMultiCast(message);
+  blinkLed();
 }
 
 void sendMessage(String message, unsigned long startTime) {
-  Serial.println(message + " " + elapTime(startTime));
+  DBG_PRINTLN(message + " " + elapTime(startTime));
 #ifdef _DEBUG_TIMING_UDP
   unsigned long multiTime = micros();
 #endif
-  sendMultiCast(message);
+  espWiFi.sendMultiCast(message);
+  blinkLed();
 #ifdef _DEBUG_TIMING_UDP
-  Serial.println("udp-multicast: " + elapTime(multiTime));
+  DBG_PRINTLN("udp-multicast: " + elapTime(multiTime));
 #endif
 }
 
