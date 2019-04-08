@@ -76,7 +76,7 @@ bool sendKeyValueProtocol = true;
 #endif
 
 // m-e Vistadoor support
-#define _ESP_ME_SUPPORT
+//#define _ESP_ME_SUPPORT
 #ifdef _ESP_ME_SUPPORT
   #include "PacketFifo.h"
   #include "EspMe.h"
