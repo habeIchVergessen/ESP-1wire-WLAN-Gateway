@@ -38,7 +38,7 @@ bool optionsChanged           = false;
 #define _MQTT_SUPPORT
 
 #define PROGNAME "Esp1wire"
-#define PROGVERS "0.4"
+#define PROGVERS "0.5"
 #define PROGBUILD String(__DATE__) + " " + String(__TIME__)
 
 #include "EspConfig.h"
@@ -76,7 +76,7 @@ bool sendKeyValueProtocol = true;
 #endif
 
 // m-e Vistadoor support
-//#define _ESP_ME_SUPPORT
+#define _ESP_ME_SUPPORT
 #ifdef _ESP_ME_SUPPORT
   #include "PacketFifo.h"
   #include "EspMe.h"
@@ -365,9 +365,9 @@ void readBatteries(Esp1wire::DeviceType filter) {
       message += SensorDataValuePort(Capacity, "VAD", String(capacity, 3));
 #ifdef _MQTT_SUPPORT
       if (sendMqtt) {
-        espMqtt.publish(SensorNamePort(Voltage, "VAD"), String(voltage, 3)); 
-        espMqtt.publish(SensorNamePort(Current, "VAD"), String(current, 3)); 
-        espMqtt.publish(SensorNamePort(Capacity, "VAD"), String(current, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Voltage, "VAD"), String(voltage, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Current, "VAD"), String(current, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Capacity, "VAD"), String(current, 3)); 
       }
 #endif
     }
@@ -378,9 +378,9 @@ void readBatteries(Esp1wire::DeviceType filter) {
       message += SensorDataValuePort(Capacity, "VDD", String(capacity, 3));
 #ifdef _MQTT_SUPPORT
       if (sendMqtt) {
-        espMqtt.publish(SensorNamePort(Voltage, "VDD"), String(voltage, 3)); 
-        espMqtt.publish(SensorNamePort(Current, "VDD"), String(current, 3)); 
-        espMqtt.publish(SensorNamePort(Capacity, "VDD"), String(current, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Voltage, "VDD"), String(voltage, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Current, "VDD"), String(current, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Capacity, "VDD"), String(current, 3)); 
       }
 #endif
     }
