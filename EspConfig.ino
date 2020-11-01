@@ -1,5 +1,7 @@
 #include "Arduino.h"
 
+#ifdef ESP8266
+
 #include "EspConfig.h"
 
 // class EspConfig
@@ -153,4 +155,6 @@ EspDeviceConfig EspConfig::getDeviceConfig(String deviceName) {
 // class EspDeviceConfig
 EspDeviceConfig::EspDeviceConfig(String deviceName) : EspConfig(deviceName) {
 }
+
+#endif  // ESP8266
 

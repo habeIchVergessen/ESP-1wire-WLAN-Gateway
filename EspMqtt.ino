@@ -86,7 +86,7 @@ bool EspMqtt::publish(String topic, String value, bool keepConnection) {
   unsigned long pubStart = micros();
 #endif
 
-  mqttClient.publish(String(mMqttTopicPrefix + topic).c_str(), value.c_str());
+  bool result = mqttClient.publish(String(mMqttTopicPrefix + topic).c_str(), value.c_str());
 
 #if defined(_DEBUG_MQTT) || defined(_DEBUG_TIMING)
   DBG_PRINTLN(" " + elapTime(pubStart));
@@ -94,6 +94,8 @@ bool EspMqtt::publish(String topic, String value, bool keepConnection) {
 
   if (!keepConnection)
     disconnect();
+
+  return result;
 }
 
 bool EspMqtt::sendAlive() {

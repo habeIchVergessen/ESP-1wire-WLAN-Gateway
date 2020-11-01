@@ -1,3 +1,5 @@
+#ifdef ESP8266
+
 #ifdef _MQTT_SUPPORT
   #include "EspConfig.h"
 #endif
@@ -14,6 +16,7 @@
 #define valueField       F(" value=")
 #define idField          F(" id=")
 #define classField       F(" class=")
+#define titleField       F(" title=")
 #define onChangeField    F(" onchange=");
 #define checkBox         "checkbox"
 #define ipAddress        "ipAddress"
@@ -72,6 +75,27 @@ String netForm() {
   html += htmlInput("gateway", ipAddress,  espConfig.getValue("gateway"), 15) + htmlNewLine();
   html += htmlLabel("dns", "dns: ");
   html += htmlInput("dns", ipAddress,  espConfig.getValue("dns"), 15) + htmlNewLine();
+
+  return htmlForm(html, action, "post", "configForm");
+}
+
+String toCheckboxValue(String value) {
+  return (value == NULL || value == "1" ? "1" : "0");
+}
+
+String optionForm() {
+  String action = F("/config?ChipID=");
+  action += getChipID();
+  action += F("&options=submit&http=&kvpudp=&mqtt=&debug=");
+
+  String html = htmlLabel("http", "http: ");
+  html += htmlInput("http", checkBox, toCheckboxValue(espConfig.getValue("http"))) + htmlNewLine();
+  html += htmlLabel("kvpudp", "kvpudp: ");
+  html += htmlInput("kvpudp", checkBox, toCheckboxValue(espConfig.getValue("kvpudp"))) + htmlNewLine();
+  html += htmlLabel("mqtt", "mqtt: ");
+  html += htmlInput("mqtt", checkBox, toCheckboxValue(espConfig.getValue("mqtt"))) + htmlNewLine();
+  html += htmlLabel("debug", "debug: ");
+  html += htmlInput("debug", checkBox, toCheckboxValue(espConfig.getValue("debug"))) + htmlNewLine();
 
   return htmlForm(html, action, "post", "configForm");
 }
@@ -257,7 +281,7 @@ String htmlAnker(String pId, String pClass, String pText) {
     result += pClass;
     result += textMark;
   }
-
+  
   result += F(">");
   result += pText;
   result += F("</a>");
@@ -306,4 +330,6 @@ String htmlSelect(String pName, String pOptions, String pOnChange) {
 
   return result;
 }
+
+#endif  // ESP8266
 

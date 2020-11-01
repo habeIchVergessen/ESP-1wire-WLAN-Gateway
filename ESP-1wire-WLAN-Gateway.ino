@@ -20,6 +20,7 @@
 
 byte BMP_ID                   = 0;
 bool httpRequestProcessed     = false;
+bool optionsChanged           = false;
 
 //#define _DEBUG
 #define _DEBUG_SETUP
@@ -37,7 +38,7 @@ bool httpRequestProcessed     = false;
 #define _MQTT_SUPPORT
 
 #define PROGNAME "Esp1wire"
-#define PROGVERS "0.3"
+#define PROGVERS "0.5"
 #define PROGBUILD String(__DATE__) + " " + String(__TIME__)
 
 #include "EspConfig.h"
@@ -54,6 +55,7 @@ Esp1wire esp1wire;
 Esp1wire::Scheduler scheduler;
 
 EspConfig espConfig(PROGNAME);
+EspWiFi espWiFi;
 EspDebug espDebug;
 
 #ifdef _MQTT_SUPPORT
@@ -93,7 +95,7 @@ void setup() {
   DBG_PRINTLN("\n\n");
 
   setupEspTools();
-  setupEspWifi();
+  EspWiFi::setup();
 
   printHeapFree();
 
@@ -115,12 +117,12 @@ void setup() {
   }
 
   // deviceConfig handler
-  registerDeviceConfigCallback(handleDeviceConfig);
-  registerDeviceListCallback(handleDeviceList);
+  espWiFi.registerDeviceConfigCallback(handleDeviceConfig);
+  espWiFi.registerDeviceListCallback(handleDeviceList);
   
   // scheduleConfig handler
-  registerScheduleConfigCallback(handleScheduleConfig);
-  registerScheduleListCallback(handleScheduleList);
+  espWiFi.registerScheduleConfigCallback(handleScheduleConfig);
+  espWiFi.registerScheduleListCallback(handleScheduleList);
 
   // scheduler
   scheduler.registerCallback(Esp1wire::Scheduler::scheduleAlarmSearch, alarmSearch);
@@ -153,7 +155,7 @@ void loop() {
   scheduler.runSchedules();
   
   // handle wifi
-  loopEspWifi();
+  EspWiFi::loop();
 
   // tools
   loopEspTools();
@@ -363,9 +365,9 @@ void readBatteries(Esp1wire::DeviceType filter) {
       message += SensorDataValuePort(Capacity, "VAD", String(capacity, 3));
 #ifdef _MQTT_SUPPORT
       if (sendMqtt) {
-        espMqtt.publish(SensorNamePort(Voltage, "VAD"), String(voltage, 3)); 
-        espMqtt.publish(SensorNamePort(Current, "VAD"), String(current, 3)); 
-        espMqtt.publish(SensorNamePort(Capacity, "VAD"), String(current, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Voltage, "VAD"), String(voltage, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Current, "VAD"), String(current, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Capacity, "VAD"), String(current, 3)); 
       }
 #endif
     }
@@ -376,9 +378,9 @@ void readBatteries(Esp1wire::DeviceType filter) {
       message += SensorDataValuePort(Capacity, "VDD", String(capacity, 3));
 #ifdef _MQTT_SUPPORT
       if (sendMqtt) {
-        espMqtt.publish(SensorNamePort(Voltage, "VDD"), String(voltage, 3)); 
-        espMqtt.publish(SensorNamePort(Current, "VDD"), String(current, 3)); 
-        espMqtt.publish(SensorNamePort(Capacity, "VDD"), String(current, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Voltage, "VDD"), String(voltage, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Current, "VDD"), String(current, 3)); 
+        espMqtt.publish(device->getOneWireDeviceID(), SensorNamePort(Capacity, "VDD"), String(current, 3)); 
       }
 #endif
     }
@@ -1049,18 +1051,20 @@ void bmpDataCallback(float temperature, int pressure) {
 }
 
 void sendMessage(String message) {
-  Serial.println(message);  
-  sendMultiCast(message);
+  DBG_PRINTLN(message);  
+  espWiFi.sendMultiCast(message);
+  blinkLed();
 }
 
 void sendMessage(String message, unsigned long startTime) {
-  Serial.println(message + " " + elapTime(startTime));
+  DBG_PRINTLN(message + " " + elapTime(startTime));
 #ifdef _DEBUG_TIMING_UDP
   unsigned long multiTime = micros();
 #endif
-  sendMultiCast(message);
+  espWiFi.sendMultiCast(message);
+  blinkLed();
 #ifdef _DEBUG_TIMING_UDP
-  Serial.println("udp-multicast: " + elapTime(multiTime));
+  DBG_PRINTLN("udp-multicast: " + elapTime(multiTime));
 #endif
 }
 
